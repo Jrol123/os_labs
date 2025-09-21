@@ -1,0 +1,46 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        // TODO: Можно было бы положиться на CMakeTools, но я не зхочу создавать кучу репозиториев
+        {
+            "label": "build with CMake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/labs/lab1/build",
+                "--config",
+                "Debug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Configure and build with CMake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-G", "MinGW Makefiles",
+                "-S", "${workspaceFolder}/labs/lab1",
+                "-B", "${workspaceFolder}/labs/lab1/build",
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "clean build",
+            "type": "shell",
+            "command": "RD",
+            "args": [
+                "${workspaceFolder}/labs/lab1/build",
+                "/S", 
+                "/Q"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
