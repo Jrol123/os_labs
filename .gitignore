@@ -52,4 +52,5 @@ Mkfile.old
 dkms.conf
 
 # CMake build
+!labs/lab1/scripts/update_and_build.cmd
 build/
