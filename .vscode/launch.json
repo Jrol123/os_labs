@@ -19,7 +19,27 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "build with CMake" // Сначала запустит задачу сборки 'build'
+            "preLaunchTask": "build lab1 with CMake" // Сначала запустит задачу сборки 'build'
+        },
+        {
+            "name": "Lab2 launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/labs/lab2/build/LAB_2.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/labs/lab1",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build lab2 with CMake" // Сначала запустит задачу сборки 'build'
         }
     ]
 }
