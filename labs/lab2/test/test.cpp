@@ -3,35 +3,48 @@
 #include <thread>
 #include <chrono>
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " <program> [args...]\n";
+using namespace std;
+
+int main(int argc, char *argv[])
+{
+    // setlocale(LC_ALL, "Russian");
+    // SetConsoleCP(1251);
+    // SetConsoleOutputCP(1251);
+    if (argc < 2)
+    {
+        cout << "Usage: " << argv[0] << " <program> [args...]" << endl;
         return 1;
     }
 
-    std::vector<std::string> args;
-    for (int i = 1; i < argc; ++i) {
+    vector<string> args;
+    for (int i = 1; i < argc; ++i)
+    {
         args.push_back(argv[i]);
     }
 
-    try {
+    try
+    {
         auto handle = BackgroundLauncher::launch(args);
-        std::cout << "Process started successfully\n";
+        cout << "Process started successfully" << endl;
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        
+        this_thread::sleep_for(chrono::seconds(1));
+
         int exit_code;
-        if (BackgroundLauncher::wait(handle, &exit_code)) {
-            std::cout << "Process exited with code: " << exit_code << "\n";
-        } else {
-            std::cerr << "Failed to wait for process\n";
+        if (BackgroundLauncher::wait(handle, &exit_code))
+        {
+            cout << "Process exited with code: " << exit_code << endl;
+        }
+        else
+        {
+            cerr << "Failed to wait for process" << endl;
             return 1;
         }
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
+    }
+    catch (const exception &e)
+    {
+        cerr << "Error: " << e.what() << endl;
         return 1;
     }
-    std::cout << "GG WP" << std::endl;
 
     return 0;
 }
