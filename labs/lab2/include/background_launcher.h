@@ -12,10 +12,14 @@ using ProcessHandle = HANDLE;
 using ProcessHandle = pid_t;
 #endif
 
-class BackgroundLauncher {
+using namespace std;
+
+/// @brief Кастомный Process Handle
+class BackgroundLauncher
+{
 public:
-    static ProcessHandle launch(const std::vector<std::string>& args);
-    static bool wait(ProcessHandle handle, int* exit_code = nullptr);
+    static ProcessHandle launch(const vector<string> &args);
+    static bool wait(ProcessHandle handle, int *exit_code = nullptr);
 };
 
 #endif
