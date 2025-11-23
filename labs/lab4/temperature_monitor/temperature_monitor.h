@@ -58,16 +58,6 @@ private:
     TemperatureMonitor(const TemperatureMonitor &) = delete;
     TemperatureMonitor &operator=(const TemperatureMonitor &) = delete;
 
-    // Открыть файлы для записи
-    bool openRawLogFile();
-    bool openHourlyLogFile();
-    bool openDailyLogFile();
-
-    // Закрыть файлы
-    void closeRawLogFile();
-    void closeHourlyLogFile();
-    void closeDailyLogFile();
-
     // Ротация логов
     void rotateRawLogs();    // Хранит 24 часа
     void rotateHourlyLogs(); // Хранит 1 месяц
@@ -85,17 +75,27 @@ private:
 
     // Методы для работы с кастомным временем
     std::chrono::milliseconds getHourDuration() const;
-    std::chrono::milliseconds getDayDuration() const; 
+    std::chrono::milliseconds getDayDuration() const;
     std::chrono::milliseconds getYearDuration() const;
 
 private:
     Config config_;
 
-    // Файловые потоки
-    std::ofstream raw_log_file_;
-    std::ofstream hourly_log_file_;
-    std::ofstream daily_log_file_;
+    bool writeToRawLog(const std::string &data);
+    bool writeToHourlyLog(const std::string &data);
+    bool writeToDailyLog(const std::string &data);
 
+    // Методы для получения текущих путей к файлам
+    std::string getCurrentRawLogPath() const;
+    std::string getCurrentHourlyLogPath() const;
+    std::string getCurrentDailyLogPath() const;
+
+    // Файловые потоки
+    // std::ofstream raw_log_file_;
+    // std::ofstream hourly_log_file_;
+    // std::ofstream daily_log_file_;
+
+    // Пути к файлам
     std::string current_raw_log_path_;
     std::string current_hourly_log_path_;
     std::string current_daily_log_path_;

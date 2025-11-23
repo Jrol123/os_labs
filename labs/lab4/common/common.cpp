@@ -99,10 +99,43 @@ namespace common
 
     bool deleteFile(const std::string &path)
     {
+        std::cout << "DEBUG: Attempting to delete file: " << path << std::endl;
+
 #ifdef _WIN32
-        return DeleteFileA(path.c_str()) != 0;
+        // На Windows сначала закрываем файл, если он открыт
+        HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile != INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(hFile);
+        }
+
+        BOOL result = DeleteFileA(path.c_str());
+        if (!result)
+        {
+            DWORD error = GetLastError();
+            std::cout << "DEBUG: DeleteFile failed, error code: " << error << std::endl;
+
+            // Попробуем альтернативный метод
+            result = std::remove(path.c_str()) == 0;
+            if (!result)
+            {
+                std::cout << "DEBUG: std::remove also failed" << std::endl;
+                return false;
+            }
+        }
+        std::cout << "DEBUG: File deleted successfully" << std::endl;
+        return true;
 #else
-        return std::remove(path.c_str()) == 0;
+        // На UNIX системах
+        int result = std::remove(path.c_str());
+        if (result != 0)
+        {
+            std::cout << "DEBUG: std::remove failed, error: " << strerror(errno) << std::endl;
+            return false;
+        }
+        std::cout << "DEBUG: File deleted successfully" << std::endl;
+        return true;
 #endif
     }
 
@@ -128,30 +161,103 @@ namespace common
 
     TimePoint parseTimeFromFileName(const std::string &filename)
     {
-        // Пример: temperature_log_20240115_143025.txt
+        // Примеры имен файлов:
+        // raw_temperature_20240115_143025.txt
+        // hourly_average_20240115.txt
+        // daily_average_202401.txt
+
         try
         {
-            size_t start = filename.find("_") + 1;
-            size_t end = filename.find(".txt");
-            if (start == std::string::npos || end == std::string::npos)
+            std::string dateTimeStr;
+
+            if (filename.find("raw_temperature_") == 0)
             {
+                // Формат: raw_temperature_YYYYMMDD_HHMMSS.txt
+                size_t start = 16; // длина "raw_temperature_"
+                size_t end = filename.find(".txt");
+                if (end == std::string::npos || end <= start)
+                {
+                    std::cout << "DEBUG: Cannot parse raw filename: " << filename << std::endl;
+                    return common::currentTime();
+                }
+                dateTimeStr = filename.substr(start, end - start);
+
+                std::tm tm = {};
+                std::istringstream ss(dateTimeStr);
+                ss >> std::get_time(&tm, "%Y%m%d_%H%M%S");
+
+                if (ss.fail())
+                {
+                    std::cout << "DEBUG: Failed to parse raw datetime: " << dateTimeStr << std::endl;
+                    return common::currentTime();
+                }
+
+                return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+            }
+            else if (filename.find("hourly_average_") == 0)
+            {
+                // Формат: hourly_average_YYYYMMDD.txt
+                size_t start = 15; // длина "hourly_average_"
+                size_t end = filename.find(".txt");
+                if (end == std::string::npos || end <= start)
+                {
+                    std::cout << "DEBUG: Cannot parse hourly filename: " << filename << std::endl;
+                    return common::currentTime();
+                }
+                dateTimeStr = filename.substr(start, end - start);
+
+                std::tm tm = {};
+                std::istringstream ss(dateTimeStr);
+                ss >> std::get_time(&tm, "%Y%m%d");
+                tm.tm_hour = 12; // Устанавливаем полдень для корректного сравнения
+                tm.tm_min = 0;
+                tm.tm_sec = 0;
+
+                if (ss.fail())
+                {
+                    std::cout << "DEBUG: Failed to parse hourly date: " << dateTimeStr << std::endl;
+                    return common::currentTime();
+                }
+
+                return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+            }
+            else if (filename.find("daily_average_") == 0)
+            {
+                // Формат: daily_average_YYYYMM.txt
+                size_t start = 14; // длина "daily_average_"
+                size_t end = filename.find(".txt");
+                if (end == std::string::npos || end <= start)
+                {
+                    std::cout << "DEBUG: Cannot parse daily filename: " << filename << std::endl;
+                    return common::currentTime();
+                }
+                dateTimeStr = filename.substr(start, end - start);
+
+                std::tm tm = {};
+                std::istringstream ss(dateTimeStr);
+                ss >> std::get_time(&tm, "%Y%m");
+                tm.tm_mday = 15; // Устанавливаем середину месяца для корректного сравнения
+                tm.tm_hour = 12;
+                tm.tm_min = 0;
+                tm.tm_sec = 0;
+
+                if (ss.fail())
+                {
+                    std::cout << "DEBUG: Failed to parse daily date: " << dateTimeStr << std::endl;
+                    return common::currentTime();
+                }
+
+                return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+            }
+            else
+            {
+                std::cout << "DEBUG: Unknown file type: " << filename << std::endl;
                 return common::currentTime();
             }
-
-            std::string dateTimeStr = filename.substr(start, end - start);
-            std::tm tm = {};
-            std::istringstream ss(dateTimeStr);
-            ss >> std::get_time(&tm, "%Y%m%d_%H%M%S");
-
-            if (ss.fail())
-            {
-                return common::currentTime();
-            }
-
-            return std::chrono::system_clock::from_time_t(std::mktime(&tm));
         }
-        catch (...)
+        catch (const std::exception &e)
         {
+            std::cout << "DEBUG: Exception in parseTimeFromFileName: " << e.what() << std::endl;
             return common::currentTime();
         }
     }

@@ -26,7 +26,6 @@ TemperatureMonitor &TemperatureMonitor::getInstance()
     static TemperatureMonitor instance;
     return instance;
 }
-
 bool TemperatureMonitor::initialize(const Config &config)
 {
     std::lock_guard<std::mutex> lock(log_mutex_);
@@ -50,11 +49,21 @@ bool TemperatureMonitor::initialize(const Config &config)
     last_daily_calculation_ = now;
     current_date_ = common::getDateString(now);
     current_hour_ = common::getHourString(now);
+    current_raw_log_path_ = getCurrentRawLogPath();
+    current_hourly_log_path_ = getCurrentHourlyLogPath();
+    current_daily_log_path_ = getCurrentDailyLogPath();
 
-    // Открываем файлы
-    if (!openRawLogFile() || !openHourlyLogFile() || !openDailyLogFile())
+    // Создаем начальные записи в файлах
+    std::string header_raw = "# Raw Temperature Measurements\n# Created: " +
+                             common::timeToString(now) + "\n# Format: Timestamp, Temperature\n";
+    std::string header_hourly = "# Hourly Average Temperature\n# Created: " +
+                                common::timeToString(now) + "\n# Format: Timestamp, AverageTemperature\n";
+    std::string header_daily = "# Daily Average Temperature\n# Created: " +
+                               common::timeToString(now) + "\n# Format: Timestamp, AverageTemperature\n";
+
+    if (!writeToRawLog(header_raw) || !writeToHourlyLog(header_hourly) || !writeToDailyLog(header_daily))
     {
-        std::cerr << "Failed to open log files" << std::endl;
+        std::cerr << "Failed to write initial headers to log files" << std::endl;
         return false;
     }
 
@@ -67,139 +76,6 @@ bool TemperatureMonitor::initialize(const Config &config)
     std::cout << "Temperature monitor initialized. Log directory: " << config_.log_directory << std::endl;
 
     return true;
-}
-
-bool TemperatureMonitor::openRawLogFile()
-{
-    closeRawLogFile();
-
-    auto now = common::getCurrentTime();
-    std::string filename = "raw_temperature_" + common::timeToFileName(now) + ".txt";
-    current_raw_log_path_ = config_.log_directory + PATH_SEPARATOR + filename;
-
-    raw_log_file_.open(current_raw_log_path_, std::ios::app);
-    if (!raw_log_file_.is_open())
-    {
-        std::cerr << "Cannot open raw log file: " << current_raw_log_path_ << std::endl;
-        return false;
-    }
-
-    raw_log_file_ << "# Raw Temperature Measurements" << std::endl;
-    raw_log_file_ << "# Created: " << common::timeToString(now) << std::endl;
-    raw_log_file_ << "# Format: Timestamp, Temperature" << std::endl;
-    raw_log_file_.flush();
-
-    return true;
-}
-
-bool TemperatureMonitor::openHourlyLogFile()
-{
-    closeHourlyLogFile();
-
-    auto now = common::getCurrentTime();
-    std::string filename = "hourly_average_" + common::getDateString(now) + ".txt";
-    current_hourly_log_path_ = config_.log_directory + PATH_SEPARATOR + filename;
-
-    hourly_log_file_.open(current_hourly_log_path_, std::ios::app);
-    if (!hourly_log_file_.is_open())
-    {
-        std::cerr << "Cannot open hourly log file: " << current_hourly_log_path_ << std::endl;
-        return false;
-    }
-
-    hourly_log_file_ << "# Hourly Average Temperature" << std::endl;
-    hourly_log_file_ << "# Created: " << common::timeToString(now) << std::endl;
-    hourly_log_file_ << "# Format: Timestamp, AverageTemperature" << std::endl;
-    hourly_log_file_.flush();
-
-    return true;
-}
-
-bool TemperatureMonitor::openDailyLogFile()
-{
-    closeDailyLogFile();
-
-    auto now = common::getCurrentTime();
-    std::string filename = "daily_average_" + common::getDateString(now).substr(0, 6) + ".txt"; // YYYYMM
-    current_daily_log_path_ = config_.log_directory + PATH_SEPARATOR + filename;
-
-    daily_log_file_.open(current_daily_log_path_, std::ios::app);
-    if (!daily_log_file_.is_open())
-    {
-        std::cerr << "Cannot open daily log file: " << current_daily_log_path_ << std::endl;
-        return false;
-    }
-
-    daily_log_file_ << "# Daily Average Temperature" << std::endl;
-    daily_log_file_ << "# Created: " << common::timeToString(now) << std::endl;
-    daily_log_file_ << "# Format: Timestamp, AverageTemperature" << std::endl;
-    daily_log_file_.flush();
-
-    return true;
-}
-
-void TemperatureMonitor::logTemperature(double temperature, const common::TimePoint &timestamp)
-{
-    std::lock_guard<std::mutex> lock(log_mutex_);
-
-    if (!initialized_)
-    {
-        std::cerr << "Monitor not initialized" << std::endl;
-        return;
-    }
-
-    // Проверяем ротацию файлов
-    std::string current_date = common::getDateString(timestamp);
-    std::string current_hour = common::getHourString(timestamp);
-
-    if (current_date != current_date_ || current_hour != current_hour_)
-    {
-        // Нужно обновить файлы
-        if (current_date != current_date_)
-        {
-            calculateDailyAverage(); // Рассчитываем среднее за предыдущий день
-            openDailyLogFile();
-            rotateDailyLogs();
-        }
-
-        if (current_hour != current_hour_)
-        {
-            calculateHourlyAverage(); // Рассчитываем среднее за предыдущий час
-            openRawLogFile();
-            openHourlyLogFile();
-            rotateRawLogs();
-            rotateHourlyLogs();
-        }
-
-        current_date_ = current_date;
-        current_hour_ = current_hour;
-    }
-
-    // Записываем в raw лог
-    std::string time_str = common::timeToString(timestamp);
-    raw_log_file_ << time_str << ", " << std::fixed << std::setprecision(2) << temperature << std::endl;
-    raw_log_file_.flush();
-
-    // Добавляем в буферы для средних
-    addToHourlyBuffer(temperature, timestamp);
-    addToDailyBuffer(temperature, timestamp);
-
-    // Проверяем нужно ли рассчитывать средние
-    if (shouldCalculateHourlyAverage(timestamp))
-    {
-        calculateHourlyAverage();
-    }
-
-    if (shouldCalculateDailyAverage(timestamp))
-    {
-        calculateDailyAverage();
-    }
-
-    // Вывод в консоль если включен
-    if (config_.console_output)
-    {
-        std::cout << "[" << time_str << "] Temperature: " << temperature << "°C" << std::endl;
-    }
 }
 
 void TemperatureMonitor::addToHourlyBuffer(double temperature, const common::TimePoint &timestamp)
@@ -228,16 +104,147 @@ void TemperatureMonitor::addToDailyBuffer(double temperature, const common::Time
 
 bool TemperatureMonitor::shouldCalculateHourlyAverage(const common::TimePoint &currentTime)
 {
-    auto time_since_last = std::chrono::duration_cast<std::chrono::minutes>(
+    // Используем кастомную длительность часа вместо жёстко закодированных 60 минут
+    auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - last_hourly_calculation_);
-    return time_since_last >= std::chrono::minutes(60);
+    return time_since_last >= getHourDuration();
 }
 
 bool TemperatureMonitor::shouldCalculateDailyAverage(const common::TimePoint &currentTime)
 {
-    auto time_since_last = std::chrono::duration_cast<std::chrono::hours>(
+    // Используем кастомную длительность дня вместо жёстко закодированных 24 часов
+    auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - last_daily_calculation_);
-    return time_since_last >= std::chrono::hours(24);
+    return time_since_last >= getDayDuration();
+}
+
+std::string TemperatureMonitor::getCurrentRawLogPath() const
+{
+    auto now = common::getCurrentTime();
+    std::string filename = "raw_temperature_" + common::timeToFileName(now) + ".txt";
+    return config_.log_directory + PATH_SEPARATOR + filename;
+}
+
+std::string TemperatureMonitor::getCurrentHourlyLogPath() const
+{
+    auto now = common::getCurrentTime();
+    std::string filename = "hourly_average_" + common::getDateString(now) + ".txt";
+    return config_.log_directory + PATH_SEPARATOR + filename;
+}
+
+std::string TemperatureMonitor::getCurrentDailyLogPath() const
+{
+    auto now = common::getCurrentTime();
+    std::string filename = "daily_average_" + common::getDateString(now).substr(0, 6) + ".txt";
+    return config_.log_directory + PATH_SEPARATOR + filename;
+}
+
+bool TemperatureMonitor::writeToRawLog(const std::string &data)
+{
+    std::string file_path = current_raw_log_path_;
+    std::ofstream file(file_path, std::ios::app);
+    if (!file.is_open())
+    {
+        std::cerr << "Cannot open raw log file for writing: " << file_path << std::endl;
+        return false;
+    }
+    file << data;
+    file.flush();
+    return true;
+}
+
+bool TemperatureMonitor::writeToHourlyLog(const std::string &data)
+{
+    std::string file_path = current_hourly_log_path_;
+    std::ofstream file(file_path, std::ios::app);
+    if (!file.is_open())
+    {
+        std::cerr << "Cannot open hourly log file for writing: " << file_path << std::endl;
+        return false;
+    }
+    file << data;
+    file.flush();
+    return true;
+}
+
+bool TemperatureMonitor::writeToDailyLog(const std::string &data)
+{
+    std::string file_path = current_daily_log_path_;
+    std::ofstream file(file_path, std::ios::app);
+    if (!file.is_open())
+    {
+        std::cerr << "Cannot open daily log file for writing: " << file_path << std::endl;
+        return false;
+    }
+    file << data;
+    file.flush();
+    return true;
+}
+
+void TemperatureMonitor::logTemperature(double temperature, const common::TimePoint &timestamp)
+{
+    std::lock_guard<std::mutex> lock(log_mutex_);
+
+    if (!initialized_)
+    {
+        std::cerr << "Monitor not initialized" << std::endl;
+        return;
+    }
+
+    // Проверяем ротацию файлов
+    std::string current_date = common::getDateString(timestamp);
+    std::string current_hour = common::getHourString(timestamp);
+
+    std::cout << "CD: " << current_date << " AND CD_: " << current_date_ << std::endl;
+
+    if (current_date != current_date_ || current_hour != current_hour_)
+    {
+        // Нужно обновить файлы
+        if (current_date != current_date_)
+        {
+            calculateDailyAverage(); // Рассчитываем среднее за предыдущий день
+            rotateDailyLogs();
+        }
+
+        if (current_hour != current_hour_)
+        {
+            calculateHourlyAverage(); // Рассчитываем среднее за предыдущий час
+            rotateRawLogs();
+            rotateHourlyLogs();
+        }
+
+        current_date_ = current_date;
+        current_hour_ = current_hour;
+    }
+
+    // Записываем в raw лог
+    std::string time_str = common::timeToString(timestamp);
+    std::string raw_data = time_str + ", " + std::to_string(temperature) + "\n";
+    if (!writeToRawLog(raw_data))
+    {
+        std::cerr << "Failed to write to raw log" << std::endl;
+    }
+
+    // Добавляем в буферы для средних
+    addToHourlyBuffer(temperature, timestamp);
+    addToDailyBuffer(temperature, timestamp);
+
+    // Проверяем нужно ли рассчитывать средние
+    if (shouldCalculateHourlyAverage(timestamp))
+    {
+        calculateHourlyAverage();
+    }
+
+    if (shouldCalculateDailyAverage(timestamp))
+    {
+        calculateDailyAverage();
+    }
+
+    // Вывод в консоль если включен
+    if (config_.console_output)
+    {
+        std::cout << "[" << time_str << "] Temperature: " << temperature << "°C" << std::endl;
+    }
 }
 
 void TemperatureMonitor::calculateHourlyAverage()
@@ -257,8 +264,12 @@ void TemperatureMonitor::calculateHourlyAverage()
     auto timestamp = common::getCurrentTime();
 
     std::string time_str = common::timeToString(timestamp);
-    hourly_log_file_ << time_str << ", " << std::fixed << std::setprecision(2) << average << std::endl;
-    hourly_log_file_.flush();
+    std::string hourly_data = time_str + ", " + std::to_string(average) + "\n";
+
+    if (!writeToHourlyLog(hourly_data))
+    {
+        std::cerr << "Failed to write hourly average" << std::endl;
+    }
 
     last_hourly_calculation_ = timestamp;
 
@@ -285,8 +296,12 @@ void TemperatureMonitor::calculateDailyAverage()
     auto timestamp = common::getCurrentTime();
 
     std::string time_str = common::timeToString(timestamp);
-    daily_log_file_ << time_str << ", " << std::fixed << std::setprecision(2) << average << std::endl;
-    daily_log_file_.flush();
+    std::string daily_data = time_str + ", " + std::to_string(average) + "\n";
+
+    if (!writeToDailyLog(daily_data))
+    {
+        std::cerr << "Failed to write daily average" << std::endl;
+    }
 
     last_daily_calculation_ = timestamp;
 
@@ -299,32 +314,57 @@ void TemperatureMonitor::calculateDailyAverage()
 void TemperatureMonitor::rotateRawLogs()
 {
     auto files = common::getFilesInDirectory(config_.log_directory);
-    auto now = common::getCurrentTime(); // Используем кастомное время
+    auto now = common::getCurrentTime();
+
+    std::cout << "=== rotateRawLogs START ===" << std::endl;
+    std::cout << "Current time: " << common::timeToString(now) << std::endl;
+    std::cout << "Day duration: " << getDayDuration().count() << " ms" << std::endl;
+    std::cout << "Files in directory: " << files.size() << std::endl;
 
     for (const auto &file : files)
     {
+        std::cout << "Processing file: " << file << std::endl;
+
         if (file.find("raw_temperature_") == 0)
         {
             auto file_time = common::parseTimeFromFileName(file);
             auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - file_time);
 
-            // Используем кастомную длительность дня
+            std::cout << "  File time: " << common::timeToString(file_time) << std::endl;
+            std::cout << "  Age: " << age.count() << " ms" << std::endl;
+            std::cout << "  Day duration: " << getDayDuration().count() << " ms" << std::endl;
+            std::cout << "  Should delete: " << (age > getDayDuration() ? "YES" : "NO") << std::endl;
+
             if (age > getDayDuration())
             {
+                std::cout << "  DELETING FILE: " << file << std::endl;
                 std::string full_path = config_.log_directory + PATH_SEPARATOR + file;
+
+                // Добавляем небольшую задержку для гарантии разблокировки файла
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
                 if (common::deleteFile(full_path))
                 {
-                    std::cout << "Deleted old raw log: " << file << std::endl;
+                    std::cout << "  SUCCESS: Deleted old raw log: " << file << std::endl;
+                }
+                else
+                {
+                    std::cout << "  FAILED: Could not delete file: " << file << std::endl;
                 }
             }
         }
     }
+
+    std::cout << "=== rotateRawLogs END ===" << std::endl;
 }
 
 void TemperatureMonitor::rotateHourlyLogs()
 {
     auto files = common::getFilesInDirectory(config_.log_directory);
-    auto now = common::getCurrentTime(); // Используем кастомное время
+    auto now = common::getCurrentTime();
+
+    std::cout << "=== rotateHourlyLogs START ===" << std::endl;
+    std::cout << "Month duration: " << (getDayDuration() * 30).count() << " ms" << std::endl;
 
     for (const auto &file : files)
     {
@@ -333,23 +373,38 @@ void TemperatureMonitor::rotateHourlyLogs()
             auto file_time = common::parseTimeFromFileName(file);
             auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - file_time);
 
-            // Используем кастомную длительность месяца (30 дней)
+            std::cout << "File: " << file << ", Age: " << age.count() << " ms" << std::endl;
+
             if (age > (getDayDuration() * 30))
             {
+                std::cout << "DELETING hourly file: " << file << std::endl;
                 std::string full_path = config_.log_directory + PATH_SEPARATOR + file;
+
+                // Добавляем небольшую задержку для гарантии разблокировки файла
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
                 if (common::deleteFile(full_path))
                 {
                     std::cout << "Deleted old hourly log: " << file << std::endl;
                 }
+                else
+                {
+                    std::cout << "FAILED to delete hourly log: " << file << std::endl;
+                }
             }
         }
     }
+
+    std::cout << "=== rotateHourlyLogs END ===" << std::endl;
 }
 
 void TemperatureMonitor::rotateDailyLogs()
 {
     auto files = common::getFilesInDirectory(config_.log_directory);
-    auto now = common::getCurrentTime(); // Используем кастомное время
+    auto now = common::getCurrentTime();
+
+    std::cout << "=== rotateDailyLogs START ===" << std::endl;
+    std::cout << "Year duration: " << getYearDuration().count() << " ms" << std::endl;
 
     for (const auto &file : files)
     {
@@ -358,42 +413,32 @@ void TemperatureMonitor::rotateDailyLogs()
             auto file_time = common::parseTimeFromFileName(file);
             auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - file_time);
 
-            // Используем кастомную длительность года
+            std::cout << "File: " << file << ", Age: " << age.count() << " ms" << std::endl;
+
             if (age > getYearDuration())
             {
+                std::cout << "DELETING daily file: " << file << std::endl;
                 std::string full_path = config_.log_directory + PATH_SEPARATOR + file;
+
+                // Добавляем небольшую задержку для гарантии разблокировки файла
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
                 if (common::deleteFile(full_path))
                 {
                     std::cout << "Deleted old daily log: " << file << std::endl;
                 }
+                else
+                {
+                    std::cout << "FAILED to delete daily log: " << file << std::endl;
+                }
             }
         }
     }
-}
-void TemperatureMonitor::closeRawLogFile()
-{
-    if (raw_log_file_.is_open())
-    {
-        raw_log_file_.close();
-    }
+
+    std::cout << "=== rotateDailyLogs END ===" << std::endl;
 }
 
-void TemperatureMonitor::closeHourlyLogFile()
-{
-    if (hourly_log_file_.is_open())
-    {
-        hourly_log_file_.close();
-    }
-}
-
-void TemperatureMonitor::closeDailyLogFile()
-{
-    if (daily_log_file_.is_open())
-    {
-        daily_log_file_.close();
-    }
-}
-
+// Убираем методы close...LogFile() так как они больше не нужны
 void TemperatureMonitor::setMeasurementInterval(std::chrono::milliseconds interval)
 {
     std::lock_guard<std::mutex> lock(log_mutex_);
@@ -407,10 +452,6 @@ void TemperatureMonitor::shutdown()
     // Рассчитываем финальные средние
     calculateHourlyAverage();
     calculateDailyAverage();
-
-    closeRawLogFile();
-    closeHourlyLogFile();
-    closeDailyLogFile();
 
     initialized_ = false;
     std::cout << "Temperature monitor shutdown" << std::endl;
