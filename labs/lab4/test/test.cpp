@@ -10,9 +10,9 @@ void testUltraFastTime()
     std::cout << "\n=== Testing Ultra-Fast Time (для демонстрации ротации) ===" << std::endl;
 
     common::setupCustomTime(
-        std::chrono::seconds(1),  // 1 час = 1 секунда
-        std::chrono::seconds(5), // 1 день = 5 секунд
-        std::chrono::seconds(10)  // 1 год = 10 секунд
+        std::chrono::seconds(5),  // 1 час = 1 секунда
+        std::chrono::seconds(10), // 1 день = 5 секунд
+        std::chrono::seconds(30)  // 1 год = 10 секунд
     );
 
     TemperatureMonitor::Config config;

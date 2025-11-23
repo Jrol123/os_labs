@@ -59,9 +59,9 @@ private:
     TemperatureMonitor &operator=(const TemperatureMonitor &) = delete;
 
     // Ротация логов
-    void rotateRawLogs();    // Хранит 24 часа
-    void rotateHourlyLogs(); // Хранит 1 месяц
-    void rotateDailyLogs();  // Хранит текущий год
+    void rotateRawLogs();
+    void rotateHourlyLogs();
+    void rotateDailyLogs();
 
     // Вычисление средних значений
     void calculateHourlyAverage();
@@ -70,8 +70,9 @@ private:
     // Вспомогательные методы
     void addToHourlyBuffer(double temperature, const common::TimePoint &timestamp);
     void addToDailyBuffer(double temperature, const common::TimePoint &timestamp);
-    bool shouldCalculateHourlyAverage(const common::TimePoint &currentTime);
-    bool shouldCalculateDailyAverage(const common::TimePoint &currentTime);
+    bool hasHourPassed(const common::TimePoint &currentTime);
+    bool hasDayPassed(const common::TimePoint &currentTime);
+    bool hasYearPassed(const common::TimePoint &currentTime);
 
     // Методы для работы с кастомным временем
     std::chrono::milliseconds getHourDuration() const;
@@ -89,11 +90,6 @@ private:
     std::string getCurrentRawLogPath() const;
     std::string getCurrentHourlyLogPath() const;
     std::string getCurrentDailyLogPath() const;
-
-    // Файловые потоки
-    // std::ofstream raw_log_file_;
-    // std::ofstream hourly_log_file_;
-    // std::ofstream daily_log_file_;
 
     // Пути к файлам
     std::string current_raw_log_path_;

@@ -102,7 +102,7 @@ void TemperatureMonitor::addToDailyBuffer(double temperature, const common::Time
     }
 }
 
-bool TemperatureMonitor::shouldCalculateHourlyAverage(const common::TimePoint &currentTime)
+bool TemperatureMonitor::hasHourPassed(const common::TimePoint &currentTime)
 {
     // Используем кастомную длительность часа вместо жёстко закодированных 60 минут
     auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -110,12 +110,18 @@ bool TemperatureMonitor::shouldCalculateHourlyAverage(const common::TimePoint &c
     return time_since_last >= getHourDuration();
 }
 
-bool TemperatureMonitor::shouldCalculateDailyAverage(const common::TimePoint &currentTime)
+bool TemperatureMonitor::hasDayPassed(const common::TimePoint &currentTime)
 {
     // Используем кастомную длительность дня вместо жёстко закодированных 24 часов
     auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - last_daily_calculation_);
     return time_since_last >= getDayDuration();
+}
+
+bool TemperatureMonitor::hasYearPassed(const common::TimePoint &currentTime){
+    auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
+        currentTime - last_daily_calculation_);
+    return time_since_last >= getYearDuration();
 }
 
 std::string TemperatureMonitor::getCurrentRawLogPath() const
@@ -197,16 +203,16 @@ void TemperatureMonitor::logTemperature(double temperature, const common::TimePo
 
     std::cout << "CD: " << current_date << " AND CD_: " << current_date_ << std::endl;
 
-    if (current_date != current_date_ || current_hour != current_hour_)
+    if (hasDayPassed(timestamp) || hasHourPassed(timestamp))
     {
         // Нужно обновить файлы
-        if (current_date != current_date_)
+        if (hasYearPassed(timestamp))
         {
             calculateDailyAverage(); // Рассчитываем среднее за предыдущий день
             rotateDailyLogs();
         }
 
-        if (current_hour != current_hour_)
+        if (hasDayPassed(timestamp))
         {
             calculateHourlyAverage(); // Рассчитываем среднее за предыдущий час
             rotateRawLogs();
@@ -230,12 +236,12 @@ void TemperatureMonitor::logTemperature(double temperature, const common::TimePo
     addToDailyBuffer(temperature, timestamp);
 
     // Проверяем нужно ли рассчитывать средние
-    if (shouldCalculateHourlyAverage(timestamp))
+    if (hasHourPassed(timestamp))
     {
         calculateHourlyAverage();
     }
 
-    if (shouldCalculateDailyAverage(timestamp))
+    if (hasDayPassed(timestamp))
     {
         calculateDailyAverage();
     }
