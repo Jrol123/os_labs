@@ -54,6 +54,5 @@ dkms.conf
 # CMake build
 !labs/lab*/scripts/*
 build/
-labs/lab4/temperature_emulation/temperature_emulation.h
 
-**/test_logs
+**/*logs*
