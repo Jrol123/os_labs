@@ -1,4 +1,5 @@
 #include "temperature_monitor.h"
+#include "common.h"
 #include <iostream>
 #include <iomanip>
 
@@ -77,7 +78,7 @@ void TemperatureMonitor::logTemperature(double temperature, const common::TimePo
     rotateLogsIfNeeded();
 }
 
-void TemperatureMonitor::setMeasurementInterval(std::chrono::seconds interval) {
+void TemperatureMonitor::setMeasurementInterval(std::chrono::milliseconds interval) {
     std::lock_guard<std::mutex> lock(log_mutex_);
     config_.measurement_interval = interval;
 }

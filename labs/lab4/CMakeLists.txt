@@ -11,13 +11,10 @@ target_include_directories(temperature_monitor PUBLIC temperature_monitor)
 add_library(temperature_emulation STATIC temperature_emulation/temperature_emulation.cpp temperature_emulation/temperature_emulation.h)
 target_include_directories(temperature_emulation PUBLIC temperature_emulation)
 
+target_link_libraries(temperature_monitor PUBLIC common)
+target_link_libraries(temperature_emulation PUBLIC common)
+
 add_executable(LAB test/test.cpp)
 target_link_libraries(LAB common)
 target_link_libraries(LAB temperature_monitor)
 target_link_libraries(LAB temperature_emulation)
-
-target_include_directories(LAB PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/common
-    ${CMAKE_CURRENT_SOURCE_DIR}/temperature_emulation
-    ${CMAKE_CURRENT_SOURCE_DIR}/temperature_monitor
-)

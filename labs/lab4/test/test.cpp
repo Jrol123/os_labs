@@ -56,7 +56,6 @@ int main() {
         testBasicLogging();
         testCustomInterval();
         
-        // Автоматически закроется при shutdown
         TemperatureMonitor::getInstance().shutdown();
         std::cout << "\nAll tests completed successfully!" << std::endl;
         

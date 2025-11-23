@@ -1,11 +1,12 @@
 #ifndef TEMPERATURE_MONITOR_H
 #define TEMPERATURE_MONITOR_H
 
-#include "../common/common.h"
+#include "common.h"
 #include <fstream>
 #include <memory>
 #include <mutex>
 
+// Монитор температуры
 class TemperatureMonitor
 {
 public:
@@ -13,7 +14,7 @@ public:
     struct Config
     {
         std::string log_directory = "logs";
-        std::chrono::seconds measurement_interval = std::chrono::hours(1);
+        std::chrono::milliseconds measurement_interval = std::chrono::hours(1);
         bool console_output = true;
 
         // Конструктор по умолчанию
@@ -42,7 +43,7 @@ public:
     void logTemperature(double temperature, const common::TimePoint &timestamp = common::currentTime());
 
     // Установка интервала измерений
-    void setMeasurementInterval(std::chrono::seconds interval);
+    void setMeasurementInterval(std::chrono::milliseconds interval);
 
     // Остановка монитора
     void shutdown();
@@ -65,10 +66,14 @@ private:
     void rotateLogsIfNeeded();
 
 private:
+    // Конфиг логгирования
     Config config_;
+    // Файл логгирования
     std::ofstream log_file_;
+    // Текущий путь к файлу логгирования
     std::string current_log_file_path_;
     std::mutex log_mutex_;
+    // Статус инициализации
     bool initialized_ = false;
 };
 
