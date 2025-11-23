@@ -131,7 +131,7 @@ namespace common
         int result = std::remove(path.c_str());
         if (result != 0)
         {
-            std::cout << "DEBUG: std::remove failed, error: " << strerror(errno) << std::endl;
+            std::cout << "DEBUG: std::remove failed, error: " << strerr(errno) << std::endl;
             return false;
         }
         std::cout << "DEBUG: File deleted successfully" << std::endl;
