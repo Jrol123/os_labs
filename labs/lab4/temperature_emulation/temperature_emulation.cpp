@@ -1,95 +1,38 @@
-#include "temperature_emulation.h"
-#include <cmath>
-#include <chrono>
+#ifndef TEMPERATURE_EMULATOR_H
+#define TEMPERATURE_EMULATOR_H
 
-TemperatureEmulator::TemperatureEmulator(double base_temp,
-                                         double amplitude,
-                                         double noise_level)
-    : base_temperature_(base_temp), amplitude_(amplitude), noise_level_(noise_level), daily_cycle_enabled_(true), random_engine_(std::random_device{}()), noise_distribution_(0.0, noise_level)
+#include "../common/common.h"
+#include <functional>
+#include <random>
+#include <memory>
+
+class TemperatureEmulator
 {
-}
+public:
+    TemperatureEmulator(double base_temp = 20.0,
+                        double amplitude = 5.0,
+                        double noise_level = 0.5);
 
-double TemperatureEmulator::getCurrentTemperature()
-{
-    if (custom_generator_)
-    {
-        return custom_generator_();
-    }
+    double getCurrentTemperature();
+    void setBaseTemperature(double temp);
+    void setAmplitude(double amplitude);
+    void setNoiseLevel(double noise_level);
+    void enableDailyCycle(bool enable);
+    void setCustomGenerator(std::function<double()> generator);
 
-    double temperature;
-    if (daily_cycle_enabled_)
-    {
-        temperature = generateDailyCycle();
-    }
-    else
-    {
-        temperature = generateRandomTemperature();
-    }
+private:
+    double base_temperature_;
+    double amplitude_;
+    double noise_level_;
+    bool daily_cycle_enabled_;
 
-    return addNoise(temperature);
-}
+    std::minstd_rand random_engine_;
+    std::normal_distribution<double> noise_distribution_;
+    std::function<double()> custom_generator_;
 
-double TemperatureEmulator::generateDailyCycle()
-{
-    // Получаем текущее время
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm local_time = *std::localtime(&time_t);
+    double generateDailyCycle();
+    double generateRandomTemperature();
+    double addNoise(double temperature);
+};
 
-    // Преобразуем время в долю дня (0-1)
-    double day_fraction = (local_time.tm_hour * 3600 +
-                           local_time.tm_min * 60 +
-                           local_time.tm_sec) /
-                          86400.0;
-
-    // Синусоидальная модель: минимум ночью, максимум днем
-    // Сдвиг фазы чтобы пик был в 14:00
-    double phase_shift = 14.0 / 24.0; // 14 часов = 14/24 дня
-    double cycle = std::sin(2 * M_PI * (day_fraction - phase_shift));
-
-    return base_temperature_ + amplitude_ * cycle;
-}
-
-double TemperatureEmulator::generateRandomTemperature()
-{
-    // Случайная температура в пределах base ± amplitude
-    std::uniform_real_distribution<double> temp_dist(
-        base_temperature_ - amplitude_,
-        base_temperature_ + amplitude_);
-    return temp_dist(random_engine_);
-}
-
-double TemperatureEmulator::addNoise(double temperature)
-{
-    if (noise_level_ > 0.0)
-    {
-        temperature += noise_distribution_(random_engine_);
-    }
-    return temperature;
-}
-
-void TemperatureEmulator::setBaseTemperature(double temp)
-{
-    base_temperature_ = temp;
-}
-
-void TemperatureEmulator::setAmplitude(double amplitude)
-{
-    amplitude_ = amplitude;
-}
-
-void TemperatureEmulator::setNoiseLevel(double noise_level)
-{
-    noise_level_ = noise_level;
-    noise_distribution_ = std::normal_distribution<double>(0.0, noise_level_);
-}
-
-void TemperatureEmulator::enableDailyCycle(bool enable)
-{
-    daily_cycle_enabled_ = enable;
-}
-
-void TemperatureEmulator::setCustomGenerator(std::function<double()> generator)
-{
-    custom_generator_ = generator;
-}
+#endif

@@ -1,46 +1,68 @@
 #include "temperature_emulation.h"
+#include "temperature_monitor.h"
 #include <iostream>
-#include <iomanip>
 #include <thread>
 #include <chrono>
 
-int main() {
-    // Создаем эмулятор с базовой температурой 20°C, 
-    // амплитудой 5°C и шумом 0.2°C
-    TemperatureEmulator emulator(20.0, 5.0, 0.2);
+void testBasicLogging() {
+    std::cout << "=== Testing Basic Logging ===" << std::endl;
     
-    std::cout << "Эмулятор температуры запущен:\n";
-    std::cout << std::fixed << std::setprecision(2);
+    // Инициализация логгера
+    TemperatureMonitor::Config config;
+    config.log_directory = "test_logs";
+    config.measurement_interval = std::chrono::seconds(2); // Для тестов используем 2 секунды
+    config.console_output = true;
     
-    // Тест на 10 измерений с интервалом 1 секунда
-    for (int i = 0; i < 10; ++i) {
+    if (!TemperatureMonitor::getInstance().initialize(config)) {
+        std::cerr << "Failed to initialize logger" << std::endl;
+        return;
+    }
+    
+    // Создаем эмулятор
+    TemperatureEmulator emulator(22.0, 3.0, 0.1);
+    
+    // Делаем 5 измерений
+    for (int i = 0; i < 5; ++i) {
         double temp = emulator.getCurrentTemperature();
-        std::cout << "Измерение " << (i + 1) << ": " << temp << "°C\n";
+        TemperatureMonitor::getInstance().logTemperature(temp);
+        
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     
-    // Тест с отключенным суточным циклом
-    std::cout << "\nСлучайная температура:\n";
-    emulator.enableDailyCycle(false);
+    std::cout << "Basic logging test completed" << std::endl;
+}
+
+void testCustomInterval() {
+    std::cout << "\n=== Testing Custom Interval ===" << std::endl;
     
-    for (int i = 0; i < 5; ++i) {
+    // Меняем интервал на 500ms
+    TemperatureMonitor::getInstance().setMeasurementInterval(std::chrono::milliseconds(500));
+    
+    TemperatureEmulator emulator(25.0, 1.0, 0.05);
+    
+    // Быстрые измерения
+    for (int i = 0; i < 3; ++i) {
         double temp = emulator.getCurrentTemperature();
-        std::cout << "Случайное измерение " << (i + 1) << ": " << temp << "°C\n";
+        TemperatureMonitor::getInstance().logTemperature(temp);
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     
-    // Тест с кастомным генератором
-    std::cout << "\nКастомный генератор (линейное увеличение):\n";
-    double custom_temp = 15.0;
-    emulator.setCustomGenerator([&custom_temp]() {
-        custom_temp += 0.5;
-        return custom_temp;
-    });
-    
-    for (int i = 0; i < 5; ++i) {
-        double temp = emulator.getCurrentTemperature();
-        std::cout << "Кастомное измерение " << (i + 1) << ": " << temp << "°C\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::cout << "Custom interval test completed" << std::endl;
+}
+
+int main() {
+    try {
+        testBasicLogging();
+        testCustomInterval();
+        
+        // Автоматически закроется при shutdown
+        TemperatureMonitor::getInstance().shutdown();
+        std::cout << "\nAll tests completed successfully!" << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
     
     return 0;
