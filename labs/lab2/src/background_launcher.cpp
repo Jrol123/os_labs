@@ -70,12 +70,13 @@ ProcessHandle BackgroundLauncher::launch(const vector<string> &args)
     }
     argv.push_back(nullptr);
 
-    pid_t pid = fork();
+    pid_t pid = fork(); // Делаем дочерний процесс
     if (pid == -1)
         throw runtime_error("fork failed");
 
     if (pid == 0)
     {
+        // Сам дочерний процесс
         execvp(argv[0], argv.data());
         exit(EXIT_FAILURE);
     }
@@ -91,7 +92,7 @@ bool BackgroundLauncher::wait(ProcessHandle handle, int *exit_code)
 
     if (exit_code)
     {
-        if (WIFEXITED(status))
+        if (WIFEXITED(status)) // Завершился ли нормально или произошла авария
             *exit_code = WEXITSTATUS(status);
         else
             return false;
