@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <numeric>
+#include <thread>
 
 std::chrono::milliseconds TemperatureMonitor::getHourDuration() const
 {
