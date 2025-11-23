@@ -5,6 +5,8 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <vector>
+#include <deque>
 
 // Монитор температуры
 class TemperatureMonitor
@@ -56,25 +58,68 @@ private:
     TemperatureMonitor(const TemperatureMonitor &) = delete;
     TemperatureMonitor &operator=(const TemperatureMonitor &) = delete;
 
-    // Открыть файл для записи
-    bool openLogFile();
+    // Открыть файлы для записи
+    bool openRawLogFile();
+    bool openHourlyLogFile();
+    bool openDailyLogFile();
 
-    // Закрыть файл
-    void closeLogFile();
+    // Закрыть файлы
+    void closeRawLogFile();
+    void closeHourlyLogFile();
+    void closeDailyLogFile();
 
-    // Ротация логов (будет реализована позже)
-    void rotateLogsIfNeeded();
+    // Ротация логов
+    void rotateRawLogs();    // Хранит 24 часа
+    void rotateHourlyLogs(); // Хранит 1 месяц
+    void rotateDailyLogs();  // Хранит текущий год
+
+    // Вычисление средних значений
+    void calculateHourlyAverage();
+    void calculateDailyAverage();
+
+    // Вспомогательные методы
+    void addToHourlyBuffer(double temperature, const common::TimePoint &timestamp);
+    void addToDailyBuffer(double temperature, const common::TimePoint &timestamp);
+    bool shouldCalculateHourlyAverage(const common::TimePoint &currentTime);
+    bool shouldCalculateDailyAverage(const common::TimePoint &currentTime);
+
+    // Методы для работы с кастомным временем
+    std::chrono::milliseconds getHourDuration() const;
+    std::chrono::milliseconds getDayDuration() const; 
+    std::chrono::milliseconds getYearDuration() const;
 
 private:
-    // Конфиг логгирования
     Config config_;
-    // Файл логгирования
-    std::ofstream log_file_;
-    // Текущий путь к файлу логгирования
-    std::string current_log_file_path_;
+
+    // Файловые потоки
+    std::ofstream raw_log_file_;
+    std::ofstream hourly_log_file_;
+    std::ofstream daily_log_file_;
+
+    std::string current_raw_log_path_;
+    std::string current_hourly_log_path_;
+    std::string current_daily_log_path_;
+
     std::mutex log_mutex_;
-    // Статус инициализации
     bool initialized_ = false;
+
+    // Буферы для вычисления средних
+    struct TemperatureReading
+    {
+        double temperature;
+        common::TimePoint timestamp;
+    };
+
+    std::deque<TemperatureReading> hourly_buffer_; // Данные за текущий час
+    std::deque<TemperatureReading> daily_buffer_;  // Данные за текущий день
+
+    // Время последнего расчета
+    common::TimePoint last_hourly_calculation_;
+    common::TimePoint last_daily_calculation_;
+
+    // Текущие даты для ротации
+    std::string current_date_;
+    std::string current_hour_;
 };
 
 #endif

@@ -1,0 +1,7 @@
+# Hourly Average Temperature
+# Created: 2025-11-23 17:13:14
+# Format: Timestamp, AverageTemperature
+2025-11-23 17:15:43, 26.51
+# Hourly Average Temperature
+# Created: 2025-11-23 17:18:39
+# Format: Timestamp, AverageTemperature
