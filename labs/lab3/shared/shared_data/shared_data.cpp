@@ -13,6 +13,72 @@ namespace cplib
     {
     }
 
+    long long SharedDataManager::getCurrentTimestamp()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    }
+
+    void SharedDataManager::registerConnection()
+    {
+        if (!isValid())
+            return;
+
+        shared_mem_.Lock();
+        // Упрощенная логика - регистрируем время подключения
+        if (shared_mem_.Data()->connection_count < 10)
+        {
+            shared_mem_.Data()->connection_timestamps[shared_mem_.Data()->connection_count] = getCurrentTimestamp();
+            shared_mem_.Data()->connection_count++;
+        }
+        shared_mem_.Unlock();
+    }
+
+    bool SharedDataManager::checkMasterAlive()
+    {
+        if (!isValid())
+            return false;
+
+        shared_mem_.Lock();
+        int master_pid = shared_mem_.Data()->master_pid;
+        shared_mem_.Unlock();
+
+        if (master_pid == 0)
+            return false;
+
+        // Проверяем, жив ли мастер
+#if defined(_WIN32)
+        HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, master_pid);
+        if (process)
+        {
+            DWORD exit_code;
+            GetExitCodeProcess(process, &exit_code);
+            CloseHandle(process);
+            return (exit_code == STILL_ACTIVE);
+        }
+        return false;
+#else
+        return (kill(master_pid, 0) == 0);
+#endif
+    }
+
+    void SharedDataManager::becomeMaster()
+    {
+        if (!isValid())
+            return;
+
+        shared_mem_.Lock();
+        shared_mem_.Data()->master_pid =
+#if defined(_WIN32)
+            GetCurrentProcessId();
+#else
+            getpid();
+#endif
+        shared_mem_.Data()->master_timestamp = getCurrentTimestamp();
+        shared_mem_.Unlock();
+    }
+
     bool SharedDataManager::isMaster()
     {
         if (!isValid())

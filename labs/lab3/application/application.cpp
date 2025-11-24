@@ -17,17 +17,11 @@ namespace cplib
             return;
         }
 
-        is_master_ = shared_data_.isMaster();
-        logger_.logStartup();
+        // Регистрируем подключение
+        shared_data_.registerConnection();
 
-        if (is_master_)
-        {
-            logger_.log("I am the MASTER process");
-        }
-        else
-        {
-            logger_.log("I am a SLAVE process");
-        }
+        // Проверяем и устанавливаем статус мастера
+        updateMasterStatus();
     }
 
     Application::~Application()
@@ -37,9 +31,48 @@ namespace cplib
         {
             counter_thread_.join();
         }
+        if (master_check_thread_.joinable())
+        {
+            master_check_thread_.join();
+        }
         if (input_thread_.joinable())
         {
             input_thread_.join();
+        }
+    }
+
+    void Application::updateMasterStatus()
+    {
+        bool new_master_status = shared_data_.isMaster();
+
+        if (new_master_status && !is_master_)
+        {
+            // Стали мастером
+            logger_.log("I am the new MASTER process");
+            is_master_ = true;
+            new_slave_status = true;
+            is_slave_ = false;
+        }
+        else if (!new_master_status && is_master_)
+        {
+            // Перестали быть мастером
+            logger_.log("I am no longer the MASTER process");
+            is_master_ = false;
+            is_slave_ = true;
+        }
+        else if (!is_master_ && new_slave_status)
+        {
+            logger_.log("I am a new SLAVE process");
+            is_slave_ = true;
+            new_slave_status = false;
+        }
+        // else if (is_master_)
+        // {
+        //     logger_.log("Master-alive");
+        // }
+        else if (is_slave_)
+        {
+            logger_.log("Slave-alive");
         }
     }
 
@@ -55,6 +88,9 @@ namespace cplib
         // Запускаем таймер счетчика (все процессы)
         counter_thread_ = std::thread(&Application::counterTimerThread, this);
 
+        // Запускаем проверку состояния мастера
+        master_check_thread_ = std::thread(&Application::masterCheckThread, this);
+
         // Запускаем обработку пользовательского ввода
         userInputThread(); // В основном потоке
 
@@ -65,7 +101,7 @@ namespace cplib
     {
         while (running_)
         {
-            std::this_thread::sleep_for(300ms);
+            std::this_thread::sleep_for(sleep_time);
             shared_data_.incrementCounter();
 
             // Только мастер пишет в лог каждую секунду (примерно 3 инкремента)
@@ -75,6 +111,28 @@ namespace cplib
             {
                 logger_.logCounter(shared_data_.getCounter());
                 increment_count = 0;
+            }
+        }
+    }
+
+    void Application::masterCheckThread()
+    {
+        while (running_)
+        {
+            std::this_thread::sleep_for(check_time); // Проверяем каждую секунду
+
+            // Если мы не мастер, проверяем возможность стать им
+            if (!is_master_)
+            {
+                updateMasterStatus();
+            }
+            else
+            {
+                // Если мы мастер, проверяем что мы все еще мастер
+                if (!shared_data_.checkMasterAlive())
+                {
+                    updateMasterStatus();
+                }
             }
         }
     }
@@ -92,7 +150,16 @@ namespace cplib
 
             if (command == "show" || command == "s")
             {
-                std::cout << "Counter: " << shared_data_.getCounter() << std::endl;
+                std::cout << "Counter: " << shared_data_.getCounter();
+                if (is_master_)
+                {
+                    std::cout << " [MASTER]";
+                }
+                else
+                {
+                    std::cout << " [SLAVE]";
+                }
+                std::cout << std::endl;
             }
             else if (command == "set" || command == "m")
             {
