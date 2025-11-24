@@ -32,6 +32,9 @@ namespace cplib
         void incrementCounter();
         void registerConnection();
 
+        void Lock();
+        void Unlock();
+
     private:
         long long getCurrentTimestamp();
         SharedMem<SharedData> shared_mem_;

@@ -8,6 +8,15 @@
 namespace cplib
 {
 
+    void SharedDataManager::Lock()
+    {
+        shared_mem_.Lock();
+    }
+    void SharedDataManager::Unlock()
+    {
+        shared_mem_.Unlock();
+    }
+    
     SharedDataManager::SharedDataManager(const std::string &name)
         : shared_mem_(name.c_str())
     {
@@ -25,14 +34,14 @@ namespace cplib
         if (!isValid())
             return;
 
-        shared_mem_.Lock();
+        Lock();
         // Упрощенная логика - регистрируем время подключения
         if (shared_mem_.Data()->connection_count < 10)
         {
             shared_mem_.Data()->connection_timestamps[shared_mem_.Data()->connection_count] = getCurrentTimestamp();
             shared_mem_.Data()->connection_count++;
         }
-        shared_mem_.Unlock();
+        Unlock();
     }
 
     bool SharedDataManager::checkMasterAlive()
@@ -40,9 +49,9 @@ namespace cplib
         if (!isValid())
             return false;
 
-        shared_mem_.Lock();
+        Lock();
         int master_pid = shared_mem_.Data()->master_pid;
-        shared_mem_.Unlock();
+        Unlock();
 
         if (master_pid == 0)
             return false;
@@ -68,7 +77,7 @@ namespace cplib
         if (!isValid())
             return;
 
-        shared_mem_.Lock();
+        Lock();
         shared_mem_.Data()->master_pid =
 #if defined(_WIN32)
             GetCurrentProcessId();
@@ -76,7 +85,7 @@ namespace cplib
             getpid();
 #endif
         shared_mem_.Data()->master_timestamp = getCurrentTimestamp();
-        shared_mem_.Unlock();
+        Unlock();
     }
 
     bool SharedDataManager::isMaster()
@@ -85,21 +94,21 @@ namespace cplib
             return false;
 
         // Блокируем для чтения master_pid
-        shared_mem_.Lock();
+        Lock();
         int master_pid = shared_mem_.Data()->master_pid;
-        shared_mem_.Unlock();
+        Unlock();
 
         // Если master_pid = 0, значит мастер еще не назначен
         if (master_pid == 0)
         {
-            shared_mem_.Lock();
+            Lock();
             shared_mem_.Data()->master_pid =
 #if defined(_WIN32)
                 GetCurrentProcessId();
 #else
                 getpid();
 #endif
-            shared_mem_.Unlock();
+            Unlock();
             return true;
         }
 
@@ -117,9 +126,9 @@ namespace cplib
             }
         }
         // Мастер умер, становимся мастером
-        shared_mem_.Lock();
+        Lock();
         shared_mem_.Data()->master_pid = GetCurrentProcessId();
-        shared_mem_.Unlock();
+        Unlock();
         return true;
 #else
         // В Linux проверяем существование процесса через kill 0
@@ -128,33 +137,33 @@ namespace cplib
             return false; // Мастер жив
         }
         // Мастер умер, становимся мастером
-        shared_mem_.Lock();
+        Lock();
         shared_mem_.Data()->master_pid = getpid();
-        shared_mem_.Unlock();
+        Unlock();
         return true;
 #endif
     }
 
     int SharedDataManager::getCounter()
     {
-        shared_mem_.Lock();
+        Lock();
         int value = shared_mem_.Data()->counter;
-        shared_mem_.Unlock();
+        Unlock();
         return value;
     }
 
     void SharedDataManager::setCounter(int value)
     {
-        shared_mem_.Lock();
+        Lock();
         shared_mem_.Data()->counter = value;
-        shared_mem_.Unlock();
+        Unlock();
     }
 
     void SharedDataManager::incrementCounter()
     {
-        shared_mem_.Lock();
+        Lock();
         shared_mem_.Data()->counter++;
-        shared_mem_.Unlock();
+        Unlock();
     }
 
 } // namespace cplib
