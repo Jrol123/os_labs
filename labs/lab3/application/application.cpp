@@ -8,7 +8,8 @@ namespace cplib
 {
 
     Application::Application(const std::string &shared_mem_name, const std::string &log_file)
-        : shared_data_(shared_mem_name), logger_(log_file), running_(false), is_master_(false)
+        : shared_data_(shared_mem_name), logger_(log_file), running_(false), is_master_(false),
+          is_slave_(false), new_slave_status(true)
     {
 
         if (!shared_data_.isValid())
@@ -34,6 +35,10 @@ namespace cplib
         if (master_check_thread_.joinable())
         {
             master_check_thread_.join();
+        }
+        if (child_manager_thread_.joinable())
+        {
+            child_manager_thread_.join();
         }
         if (input_thread_.joinable())
         {
@@ -70,10 +75,10 @@ namespace cplib
         // {
         //     logger_.log("Master-alive");
         // }
-        else if (is_slave_)
-        {
-            logger_.log("Slave-alive");
-        }
+        // else if (is_slave_)
+        // {
+        //     logger_.log("Slave-alive");
+        // }
     }
 
     void Application::run()
@@ -91,6 +96,12 @@ namespace cplib
         // Запускаем проверку состояния мастера
         master_check_thread_ = std::thread(&Application::masterCheckThread, this);
 
+        // Только мастер запускает управление дочерними процессами
+        if (is_master_)
+        {
+            child_manager_thread_ = std::thread(&Application::childManagerThread, this);
+        }
+
         // Запускаем обработку пользовательского ввода
         userInputThread(); // В основном потоке
 
@@ -104,13 +115,12 @@ namespace cplib
             std::this_thread::sleep_for(sleep_time);
             shared_data_.incrementCounter();
 
-            // Только мастер пишет в лог каждую секунду (примерно 3 инкремента)
-            static int increment_count = 0;
-            increment_count++;
-            if (is_master_ && increment_count >= 3)
+            static auto timestamp = std::chrono::system_clock::now();
+            auto curr_timestamp = std::chrono::system_clock::now();
+            if (is_master_ && curr_timestamp - timestamp >= write_time)
             {
                 logger_.logCounter(shared_data_.getCounter());
-                increment_count = 0;
+                timestamp = curr_timestamp;
             }
         }
     }
@@ -125,6 +135,11 @@ namespace cplib
             if (!is_master_)
             {
                 updateMasterStatus();
+                // Если стали мастером, запускаем управление дочерними процессами
+                if (is_master_ && !child_manager_thread_.joinable())
+                {
+                    child_manager_thread_ = std::thread(&Application::childManagerThread, this);
+                }
             }
             else
             {
@@ -135,6 +150,112 @@ namespace cplib
                 }
             }
         }
+    }
+
+    void Application::childManagerThread()
+    {
+        while (running_ && is_master_)
+        {
+            std::this_thread::sleep_for(child_launch_interval); // Раз в 3 секунды
+
+            // Проверяем, завершились ли предыдущие копии
+            int child1_pid = shared_data_.getChild1Pid();
+            int child2_pid = shared_data_.getChild2Pid();
+
+            bool child1_running = (child1_pid != 0) && shared_data_.checkProcessAlive(child1_pid);
+            bool child2_running = (child2_pid != 0) && shared_data_.checkProcessAlive(child2_pid);
+
+            // Запускаем копии, если предыдущие завершились
+            if (!child1_running)
+            {
+                if (launchChildProcess(1))
+                {
+                    logger_.log("Launched child process 1");
+                }
+                else
+                {
+                    logger_.log("Failed to launch child process 1");
+                }
+            }
+            else
+            {
+                logger_.log("Child process 1 is still running, skipping launch");
+            }
+
+            if (!child2_running)
+            {
+                if (launchChildProcess(2))
+                {
+                    logger_.log("Launched child process 2");
+                }
+                else
+                {
+                    logger_.log("Failed to launch child process 2");
+                }
+            }
+            else
+            {
+                logger_.log("Child process 2 is still running, skipping launch");
+            }
+        }
+    }
+
+    bool Application::launchChildProcess(int child_type)
+    {
+#if defined(_WIN32)
+        STARTUPINFO si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
+
+        // Создаем командную строку для дочернего процесса
+        std::string command = "LAB.exe --child " + std::to_string(child_type);
+
+        if (!CreateProcess(NULL, (LPSTR)command.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+        {
+            return false;
+        }
+
+        // Сохраняем PID дочернего процесса
+        if (child_type == 1)
+        {
+            shared_data_.setChild1Pid(pi.dwProcessId);
+        }
+        else
+        {
+            shared_data_.setChild2Pid(pi.dwProcessId);
+        }
+
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        return true;
+#else
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            // Дочерний процесс
+            execl("./LAB", "./LAB", "--child", std::to_string(child_type).c_str(), NULL);
+            exit(1); // Если execl failed
+        }
+        else if (pid > 0)
+        {
+            // Родительский процесс - сохраняем PID
+            if (child_type == 1)
+            {
+                shared_data_.setChild1Pid(pid);
+            }
+            else
+            {
+                shared_data_.setChild2Pid(pid);
+            }
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+#endif
     }
 
     void Application::userInputThread()
