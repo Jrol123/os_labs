@@ -26,7 +26,7 @@
 #endif
 
 HTTPServer::HTTPServer(TemperatureMonitor &monitor)
-    : monitor_(monitor), port_(8080)
+    : monitor_(monitor), port_(8080), refresh_interval_(5), max_measurements_(15)
 {
 }
 
@@ -194,11 +194,10 @@ void HTTPServer::run()
 
 std::string HTTPServer::generateHTMLResponse()
 {
-    // Получаем реальные данные из монитора
     double current_temp = monitor_.getCurrentTemperature();
     double hourly_avg = monitor_.getHourlyAverage();
     double daily_avg = monitor_.getDailyAverage();
-    auto recent_measurements = monitor_.getRecentMeasurements(5);
+    auto recent_measurements = monitor_.getRecentMeasurements(max_measurements_);
 
     // Создаем копию шаблона
     std::string response = html_template_;
@@ -223,6 +222,7 @@ std::string HTTPServer::generateHTMLResponse()
     replacePlaceholder("{{HOURLY_AVG}}", std::to_string(hourly_avg));
     replacePlaceholder("{{DAILY_AVG}}", std::to_string(daily_avg));
     replacePlaceholder("{{MEASUREMENTS_COUNT}}", std::to_string(recent_measurements.size()));
+    replacePlaceholder("{{REFRESH_INTERVAL}}", std::to_string(refresh_interval_ * 1000));
 
     // Временные данные
     auto now = common::getCurrentTime();
@@ -278,7 +278,7 @@ std::string HTTPServer::getTemperatureIcon(double temperature)
 
 std::string HTTPServer::generateRecentMeasurementsHTML()
 {
-    auto recent_measurements = monitor_.getRecentMeasurements(5);
+    auto recent_measurements = monitor_.getRecentMeasurements(max_measurements_);
     std::stringstream ss;
 
     for (const auto &measurement : recent_measurements)

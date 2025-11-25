@@ -17,6 +17,9 @@ public:
     void stop();
     bool isRunning() const { return running_; }
 
+    void setRefreshInterval(int seconds) { refresh_interval_ = seconds; }
+    void setMaxMeasurements(int count) { max_measurements_ = count; }
+
 private:
     void run();
     std::string generateHTMLResponse();
@@ -31,6 +34,9 @@ private:
     std::thread server_thread_;
     int port_;
     std::string html_template_;
+
+    int refresh_interval_ = 5;  // секунды
+    int max_measurements_ = 15; // количество измерений в таблице
 };
 
 #endif
