@@ -105,7 +105,6 @@ void TemperatureMonitor::addToDailyBuffer(double temperature, const common::Time
 
 bool TemperatureMonitor::hasHourPassed(const common::TimePoint &currentTime)
 {
-    // Используем кастомную длительность часа вместо жёстко закодированных 60 минут
     auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - last_hourly_calculation_);
     return time_since_last >= getHourDuration();
@@ -113,13 +112,13 @@ bool TemperatureMonitor::hasHourPassed(const common::TimePoint &currentTime)
 
 bool TemperatureMonitor::hasDayPassed(const common::TimePoint &currentTime)
 {
-    // Используем кастомную длительность дня вместо жёстко закодированных 24 часов
     auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - last_daily_calculation_);
     return time_since_last >= getDayDuration();
 }
 
-bool TemperatureMonitor::hasYearPassed(const common::TimePoint &currentTime){
+bool TemperatureMonitor::hasYearPassed(const common::TimePoint &currentTime)
+{
     auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - last_daily_calculation_);
     return time_since_last >= getYearDuration();
@@ -387,7 +386,7 @@ void TemperatureMonitor::rotateHourlyLogs()
                 std::cout << "DELETING hourly file: " << file << std::endl;
                 std::string full_path = config_.log_directory + PATH_SEPARATOR + file;
 
-                // Добавляем небольшую задержку для гарантии разблокировки файла
+                // Задержка для гарантии разблокировки файла
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
                 if (common::deleteFile(full_path))
@@ -427,7 +426,7 @@ void TemperatureMonitor::rotateDailyLogs()
                 std::cout << "DELETING daily file: " << file << std::endl;
                 std::string full_path = config_.log_directory + PATH_SEPARATOR + file;
 
-                // Добавляем небольшую задержку для гарантии разблокировки файла
+                // Задержка для гарантии разблокировки файл
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
                 if (common::deleteFile(full_path))
@@ -445,7 +444,6 @@ void TemperatureMonitor::rotateDailyLogs()
     std::cout << "=== rotateDailyLogs END ===" << std::endl;
 }
 
-// Убираем методы close...LogFile() так как они больше не нужны
 void TemperatureMonitor::setMeasurementInterval(std::chrono::milliseconds interval)
 {
     std::lock_guard<std::mutex> lock(log_mutex_);
