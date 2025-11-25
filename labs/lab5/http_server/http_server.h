@@ -20,14 +20,17 @@ public:
 private:
     void run();
     std::string generateHTMLResponse();
-    std::string generateJSONData();
-    std::string getCurrentTemperatureHTML();
-    std::string getStatisticsHTML();
+    // std::string loadTemplate();
+    std::string generateRecentMeasurementsHTML();
+    std::string getTemperatureIcon(double temperature);
+
+    bool loadTemplateFromFile();
 
     TemperatureMonitor &monitor_;
     std::atomic<bool> running_{false};
     std::thread server_thread_;
     int port_;
+    std::string html_template_;
 };
 
 #endif

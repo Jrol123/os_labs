@@ -17,7 +17,6 @@ target_include_directories(temperature_monitor PUBLIC temperature_monitor)
 add_library(temperature_emulation STATIC temperature_emulation/temperature_emulation.cpp temperature_emulation/temperature_emulation.h)
 target_include_directories(temperature_emulation PUBLIC temperature_emulation)
 
-# Новый HTTP сервер
 add_library(http_server STATIC http_server/http_server.cpp http_server/http_server.h)
 target_include_directories(http_server PUBLIC http_server)
 
@@ -42,3 +41,9 @@ target_link_libraries(LAB http_server)
 if(WIN32)
     target_link_libraries(LAB ws2_32)
 endif()
+
+configure_file(
+    http_server/template.html
+    template.html
+    COPYONLY
+)

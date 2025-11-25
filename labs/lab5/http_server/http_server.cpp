@@ -1,4 +1,5 @@
 #include "http_server.h"
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <chrono>
@@ -49,6 +50,12 @@ bool HTTPServer::start(int port)
     }
 #endif
 
+    if (!loadTemplateFromFile())
+    {
+        std::cerr << "Failed to load HTML template" << std::endl;
+        return false;
+    }
+
     port_ = port;
     running_ = true;
     server_thread_ = std::thread(&HTTPServer::run, this);
@@ -66,6 +73,7 @@ void HTTPServer::stop()
         }
     }
 }
+
 void HTTPServer::run()
 {
     SOCKET server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -183,161 +191,118 @@ void HTTPServer::run()
     close(server_fd);
 #endif
 }
+
 std::string HTTPServer::generateHTMLResponse()
 {
-    std::stringstream html;
-
     // Получаем реальные данные из монитора
     double current_temp = monitor_.getCurrentTemperature();
     double hourly_avg = monitor_.getHourlyAverage();
     double daily_avg = monitor_.getDailyAverage();
     auto recent_measurements = monitor_.getRecentMeasurements(5);
 
-    html << R"(
-<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Temperature Monitor</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
-        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-        .current-temp { font-size: 2em; color: #e74c3c; text-align: center; margin: 20px 0; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #3498db; }
-        .stat-value { font-size: 1.5em; font-weight: bold; color: #2c3e50; }
-        .last-update { text-align: center; color: #7f8c8d; font-style: italic; margin-top: 30px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f2f2f2; }
-        tr:hover { background-color: #f5f5f5; }
-        .status-normal { color: #27ae60; }
-        .status-warning { color: #f39c12; }
-        .status-critical { color: #e74c3c; }
-    </style>
-</head>
-<body>
-    <div class='container'>
-        <div class='header'>
-            <h1>🌡️ Temperature Monitoring System</h1>
-            <p>Real-time temperature data and statistics</p>
-        </div>
-    )";
+    // Создаем копию шаблона
+    std::string response = html_template_;
 
-    // Current temperature section
-    html << R"(
-        <div class='section'>
-            <h2>📊 Current Temperature</h2>
-            <div class='current-temp'>)";
+    // Заменяем плейсхолдеры на реальные данные
+    size_t pos = 0;
 
-    if (current_temp > 30)
+    // Замена плейсхолдеров
+    auto replacePlaceholder = [&](const std::string &placeholder, const std::string &value)
     {
-        html << "🔥 " << current_temp << "°C 🌡️";
+        while ((pos = response.find(placeholder, pos)) != std::string::npos)
+        {
+            response.replace(pos, placeholder.length(), value);
+            pos += value.length();
+        }
+        pos = 0; // Сбрасываем позицию для следующего поиска
+    };
+
+    // Основные данные
+    replacePlaceholder("{{CURRENT_TEMP_ICON}}", getTemperatureIcon(current_temp));
+    replacePlaceholder("{{CURRENT_TEMP}}", std::to_string(current_temp));
+    replacePlaceholder("{{HOURLY_AVG}}", std::to_string(hourly_avg));
+    replacePlaceholder("{{DAILY_AVG}}", std::to_string(daily_avg));
+    replacePlaceholder("{{MEASUREMENTS_COUNT}}", std::to_string(recent_measurements.size()));
+
+    // Временные данные
+    auto now = common::getCurrentTime();
+    std::string current_time = common::timeToString(now);
+    replacePlaceholder("{{LAST_MEASUREMENT_TIME}}", current_time);
+    replacePlaceholder("{{LAST_UPDATE}}", current_time);
+
+    // Таблица измерений
+    replacePlaceholder("{{RECENT_MEASUREMENTS}}", generateRecentMeasurementsHTML());
+
+    return response;
+}
+
+bool HTTPServer::loadTemplateFromFile()
+{
+    std::ifstream file("http_server/template.html");
+    if (!file.is_open())
+    {
+        std::cerr << "Cannot open template.html file" << std::endl;
+        return false;
     }
-    else if (current_temp < 15)
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    html_template_ = buffer.str();
+    file.close();
+
+    if (html_template_.empty())
     {
-        html << "❄️ " << current_temp << "°C 🌡️";
+        std::cerr << "Template file is empty" << std::endl;
+        return false;
+    }
+
+    std::cout << "HTML template loaded successfully" << std::endl;
+    return true;
+}
+
+std::string HTTPServer::getTemperatureIcon(double temperature)
+{
+    if (temperature > 30)
+    {
+        return "🔥";
+    }
+    else if (temperature < 15)
+    {
+        return "❄️";
     }
     else
     {
-        html << "🌡️ " << current_temp << "°C";
+        return "🌡️";
     }
+}
 
-    html << R"(</div>
-            <div style='text-align: center; color: #666;'>
-                Last measurement: )"
-                //! TODO: Нужно, чтобы время постоянно обновлялось!
-         << __TIME__ << R"(
-            </div>
-        </div>
-    )";
+std::string HTTPServer::generateRecentMeasurementsHTML()
+{
+    auto recent_measurements = monitor_.getRecentMeasurements(5);
+    std::stringstream ss;
 
-    // Statistics section
-    html << R"(
-        <div class='section'>
-            <h2>📈 Temperature Statistics</h2>
-            <div class='stats-grid'>
-                <div class='stat-card'>
-                    <h3>Current</h3>
-                    <div class='stat-value'>)"
-         << current_temp << "°C</div>"
-         << R"(<div style='color: #666; font-size: 0.9em;'>Latest reading</div>
-                </div>
-                <div class='stat-card'>
-                    <h3>Hourly Average</h3>
-                    <div class='stat-value'>)"
-         << hourly_avg << "°C</div>"
-         << R"(<div style='color: #666; font-size: 0.9em;'>Last hour</div>
-                </div>
-                <div class='stat-card'>
-                    <h3>Daily Average</h3>
-                    <div class='stat-value'>)"
-         << daily_avg << "°C</div>"
-         << R"(<div style='color: #666; font-size: 0.9em;'>Last 24 hours</div>
-                </div>
-                <div class='stat-card'>
-                    <h3>Measurements</h3>
-                    <div class='stat-value'>)"
-         << recent_measurements.size() << "</div>"
-         << R"(<div style='color: #666; font-size: 0.9em;'>Recent count</div>
-                </div>
-            </div>
-            
-            <h3 style='margin-top: 30px;'>Recent Measurements</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Temperature</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-    )";
-
-    // Add recent measurements
     for (const auto &measurement : recent_measurements)
     {
         std::string time_str = common::timeToString(measurement.first);
         double temp = measurement.second;
 
-        html << "<tr><td>" << time_str << "</td><td>" << temp << "°C</td><td class='";
+        ss << "<tr><td>" << time_str << "</td><td>" << temp << "°C</td><td class='";
 
         if (temp >= 18 && temp <= 28)
         {
-            html << "status-normal'>🟢 Normal";
+            ss << "status-normal'>🟢 Normal";
         }
-        else if (temp >= 15 && temp < 18 || temp > 28 && temp <= 32)
+        else if ((temp >= 15 && temp < 18) || (temp > 28 && temp <= 32))
         {
-            html << "status-warning'>🟡 Warning";
+            ss << "status-warning'>🟡 Warning";
         }
         else
         {
-            html << "status-critical'>🔴 Critical";
+            ss << "status-critical'>🔴 Critical";
         }
 
-        html << "</td></tr>";
+        ss << "</td></tr>";
     }
 
-    html << R"(
-                </tbody>
-            </table>
-        </div>
-        <div class='last-update'>
-            Last updated: )"
-         << __TIME__ << " " << __DATE__ << R"(
-        </div>
-    </div>
-    <script>
-        // Auto-refresh every 5 seconds
-        setTimeout(() => location.reload(), 5000);
-    </script>
-</body>
-</html>
-    )";
-
-    return html.str();
+    return ss.str();
 }
