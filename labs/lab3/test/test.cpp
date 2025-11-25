@@ -29,7 +29,6 @@ void runChild2()
     int current_value = shared_data.getCounter();
     shared_data.setCounter(current_value * 2);
 
-    // Ждем 2 секунды
     std::this_thread::sleep_for(2000ms);
 
     current_value = shared_data.getCounter();
@@ -57,7 +56,6 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    // Обычный режим работы
     cplib::Application app("global_counter", "process.log");
     app.run();
     return 0;
