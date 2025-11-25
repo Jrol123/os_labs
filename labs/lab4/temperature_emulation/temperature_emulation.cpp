@@ -1,6 +1,9 @@
 #include "temperature_emulation.h"
 #include <cmath>
 #include <chrono>
+#ifdef _WIN32
+#include <corecrt_math_defines.h>
+#endif
 
 TemperatureEmulator::TemperatureEmulator(double base_temp,
                                          double amplitude,
