@@ -3,6 +3,7 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <signal.h>
 #endif
 
 namespace cplib
