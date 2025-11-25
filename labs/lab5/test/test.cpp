@@ -1,66 +1,60 @@
 #include "temperature_emulation.h"
 #include "temperature_monitor.h"
+#include "http_server.h"
 #include "common.h"
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-/// @brief Тестовая функция
-/// @param time_test Сколько реального времени будет идти тест
-/// @param measurement_interval Раз в какой промежуток времени будут проводиться измерения
-/// @param hour_length Длина часа в реальном времени
-/// @param day_length Длина дня в реальном времени
-/// @param year_length Длина года в реальном времени
-void testUltraFastTime(std::chrono::seconds time_test, std::chrono::seconds measurement_interval, std::chrono::seconds hour_length, std::chrono::seconds day_length, std::chrono::seconds year_length)
-{
-    std::cout << "\n=== Testing Ultra-Fast Time (для демонстрации ротации) ===" << std::endl;
+void testWithHTTPServer(std::chrono::seconds test_duration, 
+                       std::chrono::seconds measurement_interval) {
+    std::cout << "\n=== Testing with HTTP Server ===" << std::endl;
 
-    common::setupCustomTime(
-        hour_length,
-        day_length,
-        year_length);
-
+    // Инициализация монитора
     TemperatureMonitor::Config config;
-    config.log_directory = "logs_ultrafast";
-    config.measurement_interval = measurement_interval;
     config.console_output = true;
+    config.measurement_interval = measurement_interval;
 
-    if (!TemperatureMonitor::getInstance().initialize(config))
-    {
+    if (!TemperatureMonitor::getInstance().initialize(config)) {
         std::cerr << "Failed to initialize temperature monitor" << std::endl;
         return;
     }
 
+    // Запуск HTTP сервера
+    HTTPServer server(TemperatureMonitor::getInstance());
+    if (!server.start(8080)) {
+        std::cerr << "Failed to start HTTP server" << std::endl;
+        return;
+    }
+
+    std::cout << "HTTP server started on port 8080" << std::endl;
+    std::cout << "Open http://localhost:8080 in your browser" << std::endl;
+
+    // Эмулятор температуры
     TemperatureEmulator emulator(25.0, 1.0, 0.05);
 
+    // Основной цикл измерений
     auto start_time = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start_time < time_test)
-    {
+    while (std::chrono::steady_clock::now() - start_time < test_duration) {
         double temp = emulator.getCurrentTemperature();
         TemperatureMonitor::getInstance().logTemperature(temp);
-        std::this_thread::sleep_for(config.measurement_interval);
+        std::this_thread::sleep_for(measurement_interval);
     }
 
-    std::cout << "Ultra-fast time test completed" << std::endl;
-    common::resetToRealTime();
+    // Остановка
+    server.stop();
+    TemperatureMonitor::getInstance().shutdown();
+    
+    std::cout << "HTTP server test completed" << std::endl;
 }
 
-int main()
-{
-    /*
-    Чистка будет происходить после определённого числа тиков, а не в полночь
-    */
-    try
-    {
-        testUltraFastTime(std::chrono::seconds(30), std::chrono::seconds(1), std::chrono::seconds(5), std::chrono::seconds(10), std::chrono::seconds(30));
-
-        TemperatureMonitor::getInstance().shutdown();
-        std::cout << "\nAll time scale tests completed successfully!" << std::endl;
+int main() {
+    try {
+        testWithHTTPServer(std::chrono::seconds(300), std::chrono::seconds(5));
+        std::cout << "\nAll tests completed successfully!" << std::endl;
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
-        common::resetToRealTime();
         return 1;
     }
 

@@ -1,121 +1,71 @@
+// temperature_monitor.h (упрощенная версия)
 #ifndef TEMPERATURE_MONITOR_H
 #define TEMPERATURE_MONITOR_H
 
 #include "common.h"
-#include <fstream>
 #include <memory>
 #include <mutex>
 #include <vector>
 #include <deque>
 
-// Монитор температуры
 class TemperatureMonitor
 {
 public:
-    // Конфигурация логирования
     struct Config
     {
-        std::string log_directory = "logs";
-        std::chrono::milliseconds measurement_interval = std::chrono::hours(1);
         bool console_output = true;
+        std::chrono::milliseconds measurement_interval = std::chrono::hours(1);
 
-        // Конструктор по умолчанию
         Config() = default;
-
-        // Конструктор с параметрами
-        Config(const std::string &dir,
-               std::chrono::seconds interval = std::chrono::hours(1),
-               bool console = true)
-            : log_directory(dir), measurement_interval(interval), console_output(console) {}
+        Config(bool console, std::chrono::seconds interval = std::chrono::hours(1))
+            : console_output(console), measurement_interval(interval) {}
     };
 
-    // Получить экземпляр монитора (синглтон)
     static TemperatureMonitor &getInstance();
 
-    // Инициализация монитора - УБИРАЕМ значение по умолчанию здесь
     bool initialize(const Config &config);
-
-    // Перегруженная версия без параметров
-    bool initialize()
-    {
-        return initialize(Config());
-    }
-
-    // Запись измерения температуры
     void logTemperature(double temperature, const common::TimePoint &timestamp = common::currentTime());
-
-    // Установка интервала измерений
     void setMeasurementInterval(std::chrono::milliseconds interval);
-
-    // Остановка монитора
     void shutdown();
+
+    // Новые методы для HTTP сервера
+    double getCurrentTemperature();
+    double getHourlyAverage();
+    double getDailyAverage();
+    std::vector<std::pair<common::TimePoint, double>> getRecentMeasurements(int count = 10);
 
 private:
     TemperatureMonitor() = default;
     ~TemperatureMonitor();
 
-    // Запрет копирования
     TemperatureMonitor(const TemperatureMonitor &) = delete;
     TemperatureMonitor &operator=(const TemperatureMonitor &) = delete;
 
-    // Ротация логов
-    void rotateRawLogs();
-    void rotateHourlyLogs();
-    void rotateDailyLogs();
-
-    // Вычисление средних значений
     void calculateHourlyAverage();
     void calculateDailyAverage();
-
-    // Вспомогательные методы
     void addToHourlyBuffer(double temperature, const common::TimePoint &timestamp);
     void addToDailyBuffer(double temperature, const common::TimePoint &timestamp);
-    bool hasHourPassed(const common::TimePoint &currentTime);
-    bool hasDayPassed(const common::TimePoint &currentTime);
-    bool hasYearPassed(const common::TimePoint &currentTime);
 
-    // Методы для работы с кастомным временем
-    std::chrono::milliseconds getHourDuration() const;
-    std::chrono::milliseconds getDayDuration() const;
-    std::chrono::milliseconds getYearDuration() const;
-
-private:
     Config config_;
-
-    bool writeToRawLog(const std::string &data);
-    bool writeToHourlyLog(const std::string &data);
-    bool writeToDailyLog(const std::string &data);
-
-    // Методы для получения текущих путей к файлам
-    std::string getCurrentRawLogPath() const;
-    std::string getCurrentHourlyLogPath() const;
-    std::string getCurrentDailyLogPath() const;
-
-    // Пути к файлам
-    std::string current_raw_log_path_;
-    std::string current_hourly_log_path_;
-    std::string current_daily_log_path_;
-
-    std::mutex log_mutex_;
+    std::mutex data_mutex_;
     bool initialized_ = false;
 
-    // Буферы для вычисления средних
     struct TemperatureReading
     {
         double temperature;
         common::TimePoint timestamp;
     };
 
-    std::deque<TemperatureReading> hourly_buffer_; // Данные за текущий час
-    std::deque<TemperatureReading> daily_buffer_;  // Данные за текущий день
+    std::deque<TemperatureReading> hourly_buffer_;
+    std::deque<TemperatureReading> daily_buffer_;
+    std::deque<TemperatureReading> recent_measurements_;
 
-    // Время последнего расчета
     common::TimePoint last_hourly_calculation_;
     common::TimePoint last_daily_calculation_;
 
-    // Текущие даты для ротации
-    std::string current_date_;
-    std::string current_hour_;
+    double current_temperature_ = 0.0;
+    double hourly_average_ = 0.0;
+    double daily_average_ = 0.0;
 };
 
 #endif
