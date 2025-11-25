@@ -5,19 +5,24 @@
 #include <thread>
 #include <chrono>
 
-void testUltraFastTime()
+/// @brief Тестовая функция
+/// @param time_test Сколько реального времени будет идти тест
+/// @param measurement_interval Раз в какой промежуток времени будут проводиться измерения
+/// @param hour_length Длина часа в реальном времени
+/// @param day_length Длина дня в реальном времени
+/// @param year_length Длина года в реальном времени
+void testUltraFastTime(std::chrono::seconds time_test, std::chrono::seconds measurement_interval, std::chrono::seconds hour_length, std::chrono::seconds day_length, std::chrono::seconds year_length)
 {
     std::cout << "\n=== Testing Ultra-Fast Time (для демонстрации ротации) ===" << std::endl;
 
     common::setupCustomTime(
-        std::chrono::seconds(5),  // 1 час = 1 секунда
-        std::chrono::seconds(10), // 1 день = 5 секунд
-        std::chrono::seconds(30)  // 1 год = 10 секунд
-    );
+        hour_length,
+        day_length,
+        year_length);
 
     TemperatureMonitor::Config config;
     config.log_directory = "logs_ultrafast";
-    config.measurement_interval = std::chrono::seconds(1);
+    config.measurement_interval = measurement_interval;
     config.console_output = true;
 
     if (!TemperatureMonitor::getInstance().initialize(config))
@@ -28,9 +33,8 @@ void testUltraFastTime()
 
     TemperatureEmulator emulator(25.0, 1.0, 0.05);
 
-    // Запускаем на 30 секунд реального времени
     auto start_time = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start_time < std::chrono::seconds(60))
+    while (std::chrono::steady_clock::now() - start_time < time_test)
     {
         double temp = emulator.getCurrentTemperature();
         TemperatureMonitor::getInstance().logTemperature(temp);
@@ -48,7 +52,7 @@ int main()
     */
     try
     {
-        testUltraFastTime();
+        testUltraFastTime(std::chrono::seconds(30), std::chrono::seconds(1), std::chrono::seconds(5), std::chrono::seconds(10), std::chrono::seconds(30));
 
         TemperatureMonitor::getInstance().shutdown();
         std::cout << "\nAll time scale tests completed successfully!" << std::endl;
