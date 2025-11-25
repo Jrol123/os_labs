@@ -192,6 +192,13 @@ void HTTPServer::run()
 #endif
 }
 
+std::string formatTemperature(double temperature)
+{
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(2) << temperature;
+    return ss.str();
+}
+
 std::string HTTPServer::generateHTMLResponse()
 {
     double current_temp = monitor_.getCurrentTemperature();
@@ -218,9 +225,9 @@ std::string HTTPServer::generateHTMLResponse()
 
     // Основные данные
     replacePlaceholder("{{CURRENT_TEMP_ICON}}", getTemperatureIcon(current_temp));
-    replacePlaceholder("{{CURRENT_TEMP}}", std::to_string(current_temp));
-    replacePlaceholder("{{HOURLY_AVG}}", std::to_string(hourly_avg));
-    replacePlaceholder("{{DAILY_AVG}}", std::to_string(daily_avg));
+    replacePlaceholder("{{CURRENT_TEMP}}", formatTemperature(current_temp));
+    replacePlaceholder("{{HOURLY_AVG}}", formatTemperature(hourly_avg));
+    replacePlaceholder("{{DAILY_AVG}}", formatTemperature(daily_avg));
     replacePlaceholder("{{MEASUREMENTS_COUNT}}", std::to_string(recent_measurements.size()));
     replacePlaceholder("{{REFRESH_INTERVAL}}", std::to_string(refresh_interval_ * 1000));
 
@@ -286,7 +293,7 @@ std::string HTTPServer::generateRecentMeasurementsHTML()
         std::string time_str = common::timeToString(measurement.first);
         double temp = measurement.second;
 
-        ss << "<tr><td>" << time_str << "</td><td>" << temp << "°C</td><td class='";
+        ss << "<tr><td>" << time_str << "</td><td>" << formatTemperature(temp) << "°C</td><td class='";
 
         if (temp >= 18 && temp <= 28)
         {
