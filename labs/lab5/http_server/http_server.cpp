@@ -249,6 +249,7 @@ std::string HTTPServer::generateHTMLResponse()
     html << R"(</div>
             <div style='text-align: center; color: #666;'>
                 Last measurement: )"
+                //! TODO: Нужно, чтобы время постоянно обновлялось!
          << __TIME__ << R"(
             </div>
         </div>

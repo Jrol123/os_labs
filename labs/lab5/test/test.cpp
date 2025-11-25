@@ -50,7 +50,7 @@ void testWithHTTPServer(std::chrono::seconds test_duration,
 
 int main() {
     try {
-        testWithHTTPServer(std::chrono::seconds(300), std::chrono::seconds(5));
+        testWithHTTPServer(std::chrono::seconds(300), std::chrono::seconds(1));
         std::cout << "\nAll tests completed successfully!" << std::endl;
     }
     catch (const std::exception &e) {
