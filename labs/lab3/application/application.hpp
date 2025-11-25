@@ -5,6 +5,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#include <pthread.h>
 
 namespace cplib
 {
@@ -18,7 +19,7 @@ namespace cplib
         void run();
 
     private:
-        void counterTimerThread(); // Таймер счетчика (300 мс)
+        void counterTimerThread(); // Таймер счетчика
         void masterCheckThread();  // Проверка состояния мастера
         void childManagerThread(); // Управление дочерними процессами
         void userInputThread();    // Пользовательский ввод
@@ -43,4 +44,4 @@ namespace cplib
         bool new_slave_status;
     };
 
-} // namespace cplib
+}

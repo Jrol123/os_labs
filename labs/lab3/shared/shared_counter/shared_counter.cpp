@@ -31,4 +31,4 @@ namespace cplib
         counterMem.Unlock();
     }
 
-} // namespace cplib
+}

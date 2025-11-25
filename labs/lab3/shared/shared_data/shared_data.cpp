@@ -36,7 +36,7 @@ namespace cplib
             return;
 
         Lock();
-        // Упрощенная логика - регистрируем время подключения
+        // Регистрация времени подключения
         if (shared_mem_.Data()->connection_count < 10)
         {
             shared_mem_.Data()->connection_timestamps[shared_mem_.Data()->connection_count] = getCurrentTimestamp();
@@ -132,7 +132,6 @@ namespace cplib
         Unlock();
         return true;
 #else
-        // В Linux проверяем существование процесса через kill 0
         if (kill(master_pid, 0) == 0)
         {
             return false; // Мастер жив
@@ -183,6 +182,7 @@ namespace cplib
         }
         return false;
 #else
+        // Проверка на существование процесса, без его убийства
         return (kill(pid, 0) == 0);
 #endif
     }
@@ -217,4 +217,4 @@ namespace cplib
         shared_mem_.Unlock();
     }
 
-} // namespace cplib
+}

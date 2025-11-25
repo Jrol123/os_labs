@@ -18,10 +18,8 @@ namespace cplib
             return;
         }
 
-        // Регистрируем подключение
         shared_data_.registerConnection();
 
-        // Проверяем и устанавливаем статус мастера
         updateMasterStatus();
     }
 
@@ -52,7 +50,6 @@ namespace cplib
 
         if (new_master_status && !is_master_)
         {
-            // Стали мастером
             logger_.log("I am the new MASTER process");
             is_master_ = true;
             new_slave_status = true;
@@ -60,7 +57,6 @@ namespace cplib
         }
         else if (!new_master_status && is_master_)
         {
-            // Перестали быть мастером
             logger_.log("I am no longer the MASTER process");
             is_master_ = false;
             is_slave_ = true;
@@ -103,7 +99,7 @@ namespace cplib
         }
 
         // Запускаем обработку пользовательского ввода
-        userInputThread(); // В основном потоке
+        userInputThread();
 
         running_ = false;
     }
@@ -129,7 +125,7 @@ namespace cplib
     {
         while (running_)
         {
-            std::this_thread::sleep_for(check_time); // Проверяем каждую секунду
+            std::this_thread::sleep_for(check_time);
 
             // Если мы не мастер, проверяем возможность стать им
             if (!is_master_)
@@ -156,7 +152,7 @@ namespace cplib
     {
         while (running_ && is_master_)
         {
-            std::this_thread::sleep_for(child_launch_interval); // Раз в 3 секунды
+            std::this_thread::sleep_for(child_launch_interval);
 
             // Проверяем, завершились ли предыдущие копии
             int child1_pid = shared_data_.getChild1Pid();
@@ -209,7 +205,6 @@ namespace cplib
         si.cb = sizeof(si);
         ZeroMemory(&pi, sizeof(pi));
 
-        // Создаем командную строку для дочернего процесса
         std::string command = "LAB.exe --child " + std::to_string(child_type);
 
         if (!CreateProcess(NULL, (LPSTR)command.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
@@ -217,7 +212,6 @@ namespace cplib
             return false;
         }
 
-        // Сохраняем PID дочернего процесса
         if (child_type == 1)
         {
             shared_data_.setChild1Pid(pi.dwProcessId);
@@ -235,12 +229,15 @@ namespace cplib
         if (pid == 0)
         {
             // Дочерний процесс
+            struct sigaction action;
+            action.sa_handler = SIG_DFL;
+            sigaction(SIGTERM, &action, NULL);
             execl("./LAB", "./LAB", "--child", std::to_string(child_type).c_str(), NULL);
             exit(1); // Если execl failed
         }
         else if (pid > 0)
         {
-            // Родительский процесс - сохраняем PID
+            // Родительский процесс
             if (child_type == 1)
             {
                 shared_data_.setChild1Pid(pid);
@@ -309,4 +306,4 @@ namespace cplib
         }
     }
 
-} // namespace cplib
+}

@@ -15,7 +15,7 @@ namespace cplib
         int child1_pid;                      // PID первой копии
         int child2_pid;                      // PID второй копии
         long long master_timestamp;          // Время когда процесс стал мастером
-        long long connection_timestamps[10]; // Времена подключения процессов (упрощенно)
+        long long connection_timestamps[10]; // Времена подключения процессов
 
         int connection_count;
     };
@@ -49,4 +49,4 @@ namespace cplib
         SharedMem<SharedData> shared_mem_;
     };
 
-} // namespace cplib
+}
