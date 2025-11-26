@@ -2,6 +2,7 @@
 #define GUI_LINUX_H
 
 #include "temperature_monitor.h"
+#include <X11/Intrinsic.h>
 #include <string>
 #include <vector>
 

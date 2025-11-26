@@ -53,7 +53,7 @@ int TemperatureGUILinux::run()
     XtRealizeWidget(toplevel_);
 
     // Setup timer for periodic updates (2000ms)
-    XtAppAddTimeOut(app_context_, 2000, timerCallback, this);
+    XtAppAddTimeOut(app_context_, 2000, (XtTimerCallbackProc)timerCallback, this);
 
     XtAppMainLoop(app_context_);
     return 0;
@@ -62,10 +62,13 @@ int TemperatureGUILinux::run()
 void TemperatureGUILinux::timerCallback(void *client_data, void *id)
 {
     TemperatureGUILinux *gui = static_cast<TemperatureGUILinux *>(client_data);
-    gui->updateTemperatureData();
+    if (gui)
+    {
+        gui->updateTemperatureData();
 
-    // Reschedule timer
-    XtAppAddTimeOut(gui->app_context_, 2000, timerCallback, gui);
+        // Reschedule timer
+        XtAppAddTimeOut(gui->app_context_, 2000, (XtTimerCallbackProc)timerCallback, (XtPointer)gui);
+    }
 }
 
 void TemperatureGUILinux::createControls()

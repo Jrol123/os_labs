@@ -1,1 +1,1 @@
-./build/LAB
+./build/LAB_GUI
