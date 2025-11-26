@@ -8,9 +8,26 @@ endif()
 # find_package(PkgConfig REQUIRED)
 find_program(SQLite3 NAMES sqlite3.exe)
 if(UNIX AND NOT APPLE)
-    find_package(libxt-dev REQUIRED)
-    find_package(libxaw7-dev REQUIRED)
     find_package(X11 REQUIRED)
+    if(X11_FOUND)
+        include_directories(${X11_INCLUDE_DIR})
+        # Find Xt and other required X11 libraries
+        find_library(XT_LIB Xt)
+        find_library(XAW_LIB Xaw)
+        find_library(XMU_LIB Xmu)
+        find_library(XEXT_LIB Xext)
+        
+        set(X11_LIBRARIES 
+            ${X11_LIBRARIES}
+            ${XT_LIB}
+            ${XAW_LIB} 
+            ${XMU_LIB}
+            ${XEXT_LIB}
+        )
+        message(STATUS "X11 libraries found: ${X11_LIBRARIES}")
+    else()
+        message(WARNING "X11 not found - GUI will not be available")
+    endif()
 endif()
 # if(WIN32)
     # find_file(SQLite3 NAMES sqlite3d.dll)
