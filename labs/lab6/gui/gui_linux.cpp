@@ -22,9 +22,8 @@ bool TemperatureGUILinux::initialize(int argc, char **argv)
     std::cout << "Initializing Linux GUI..." << std::endl;
 
     // Initialize Xt toolkit
-    XtAppContext app_context;
     toplevel_ = XtVaAppInitialize(
-        &app_context,
+        &app_context_,
         "TemperatureMonitor",
         NULL, 0,
         &argc, argv,
@@ -39,12 +38,6 @@ bool TemperatureGUILinux::initialize(int argc, char **argv)
 
     createControls();
 
-    // Initial display update
-    XtAppAddTimeOut(app_context, 100, [](XtPointer client_data, XtIntervalId *id)
-                    {
-        TemperatureGUILinux::getInstance().updateTemperatureData();
-        return False; }, NULL);
-
     std::cout << "Linux GUI initialized successfully" << std::endl;
     return true;
 }
@@ -57,15 +50,28 @@ int TemperatureGUILinux::run()
         return 1;
     }
 
-    XtRealizeWidget(static_cast<Widget>(toplevel_));
-    XtAppMainLoop(XtWidgetToApplicationContext(static_cast<Widget>(toplevel_)));
+    XtRealizeWidget(toplevel_);
+
+    // Setup timer for periodic updates (2000ms)
+    XtAppAddTimeOut(app_context_, 2000, timerCallback, this);
+
+    XtAppMainLoop(app_context_);
     return 0;
+}
+
+void TemperatureGUILinux::timerCallback(void *client_data, void *id)
+{
+    TemperatureGUILinux *gui = static_cast<TemperatureGUILinux *>(client_data);
+    gui->updateTemperatureData();
+
+    // Reschedule timer
+    XtAppAddTimeOut(gui->app_context_, 2000, timerCallback, gui);
 }
 
 void TemperatureGUILinux::createControls()
 {
     // Create main form with better sizing
-    Widget form = XtVaCreateManagedWidget("form", formWidgetClass, static_cast<Widget>(toplevel_),
+    Widget form = XtVaCreateManagedWidget("form", formWidgetClass, toplevel_,
                                           XtNwidth, 600,
                                           XtNheight, 500,
                                           NULL);
@@ -117,13 +123,12 @@ void TemperatureGUILinux::createControls()
                                               XtNfromVert, daily_avg_label,
                                               NULL);
 
-    XtAddCallback(static_cast<Widget>(refresh_button_), XtNcallback, [](Widget w, void *client_data, void *call_data)
-                  { TemperatureGUILinux::getInstance().updateTemperatureData(); }, NULL);
+    XtAddCallback(refresh_button_, XtNcallback, refreshCallback, this);
 
     // Measurement list
     Widget measurements_label = XtVaCreateManagedWidget("Recent Measurements:", labelWidgetClass, box,
                                                         XtNfromHoriz, NULL,
-                                                        XtNfromVert, static_cast<Widget>(refresh_button_),
+                                                        XtNfromVert, refresh_button_,
                                                         NULL);
 
     measurement_text_ = XtVaCreateManagedWidget("measurement_text", asciiTextWidgetClass, box,
@@ -141,9 +146,9 @@ void TemperatureGUILinux::createControls()
     XtManageChild(form);
 }
 
-void TemperatureGUILinux::refreshCallback(void *user_data)
+void TemperatureGUILinux::refreshCallback(Widget w, void *client_data, void *call_data)
 {
-    TemperatureGUILinux *gui = static_cast<TemperatureGUILinux *>(user_data);
+    TemperatureGUILinux *gui = static_cast<TemperatureGUILinux *>(client_data);
     gui->updateTemperatureData();
 }
 
@@ -184,19 +189,19 @@ void TemperatureGUILinux::updateDisplay()
         // Update current temperature
         ss << currentTemp << " °C";
         current_temp_str_ = ss.str();
-        XtVaSetValues(static_cast<Widget>(current_temp_value_), XtNlabel, current_temp_str_.c_str(), NULL);
+        XtVaSetValues(current_temp_value_, XtNlabel, current_temp_str_.c_str(), NULL);
         ss.str("");
 
         // Update hourly average
         ss << hourlyAvg << " °C";
         hourly_avg_str_ = ss.str();
-        XtVaSetValues(static_cast<Widget>(hourly_avg_value_), XtNlabel, hourly_avg_str_.c_str(), NULL);
+        XtVaSetValues(hourly_avg_value_, XtNlabel, hourly_avg_str_.c_str(), NULL);
         ss.str("");
 
         // Update daily average
         ss << dailyAvg << " °C";
         daily_avg_str_ = ss.str();
-        XtVaSetValues(static_cast<Widget>(daily_avg_value_), XtNlabel, daily_avg_str_.c_str(), NULL);
+        XtVaSetValues(daily_avg_value_, XtNlabel, daily_avg_str_.c_str(), NULL);
         ss.str("");
 
         // Update measurement list
@@ -217,12 +222,12 @@ void TemperatureGUILinux::updateDisplay()
             text_str += "No measurements available";
         }
 
-        XtVaSetValues(static_cast<Widget>(measurement_text_), XtNstring, text_str.c_str(), NULL);
+        XtVaSetValues(measurement_text_, XtNstring, text_str.c_str(), NULL);
     }
     catch (const std::exception &e)
     {
         std::cerr << "Error updating display: " << e.what() << std::endl;
         std::string error_msg = "Error: " + std::string(e.what());
-        XtVaSetValues(static_cast<Widget>(measurement_text_), XtNstring, error_msg.c_str(), NULL);
+        XtVaSetValues(measurement_text_, XtNstring, error_msg.c_str(), NULL);
     }
 }

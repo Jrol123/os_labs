@@ -17,13 +17,13 @@ void signalHandler(int signal)
     shutdown_requested = true;
 }
 
-void runTemperatureSystem(std::chrono::seconds measurement_interval)
+void runTemperatureSystem()
 {
     std::cout << "Starting Temperature Monitoring System..." << std::endl;
 
     TemperatureMonitor::Config config;
     config.console_output = false;
-    config.measurement_interval = measurement_interval;
+    config.measurement_interval = std::chrono::seconds(1);
 
     if (!TemperatureMonitor::getInstance().initialize(config))
     {
@@ -41,7 +41,7 @@ void runTemperatureSystem(std::chrono::seconds measurement_interval)
         {
             double temp = emulator.getCurrentTemperature();
             TemperatureMonitor::getInstance().logTemperature(temp);
-            std::this_thread::sleep_for(measurement_interval);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
         catch (const std::exception &e)
         {
@@ -94,24 +94,13 @@ int main(int argc, char *argv[])
 
     try
     {
-        // Initialize monitor first
-        TemperatureMonitor::Config config;
-        config.console_output = false;
-        config.measurement_interval = std::chrono::seconds(1);
-
-        if (!TemperatureMonitor::getInstance().initialize(config))
-        {
-            std::cerr << "Failed to initialize temperature monitor" << std::endl;
-            return 1;
-        }
-
         // Start HTTP server in separate thread
         std::thread http_thread([]()
                                 { runHttpServer(); });
 
         // Start temperature system in separate thread
         std::thread temp_thread([]()
-                                { runTemperatureSystem(std::chrono::seconds(1)); });
+                                { runTemperatureSystem(); });
 
         // Initialize and run Linux GUI
         TemperatureGUILinux &gui = TemperatureGUILinux::getInstance();
@@ -125,23 +114,23 @@ int main(int argc, char *argv[])
         else
         {
             std::cout << "Starting GUI main loop..." << std::endl;
-            gui.run();
+            int result = gui.run();
+
+            // When GUI exits, shutdown other threads
+            shutdown_requested = true;
+
+            if (http_thread.joinable())
+            {
+                http_thread.join();
+            }
+
+            if (temp_thread.joinable())
+            {
+                temp_thread.join();
+            }
+
+            return result;
         }
-
-        // Cleanup
-        shutdown_requested = true;
-
-        if (http_thread.joinable())
-        {
-            http_thread.join();
-        }
-
-        if (temp_thread.joinable())
-        {
-            temp_thread.join();
-        }
-
-        std::cout << "Application shutdown complete" << std::endl;
     }
     catch (const std::exception &e)
     {

@@ -20,23 +20,25 @@ private:
 
     void createControls();
     void updateDisplay();
-    static void refreshCallback(void *user_data);
+    static void refreshCallback(Widget w, void *client_data, void *call_data);
+    static void timerCallback(void *client_data, void *id);
 
     TemperatureMonitor *monitor_ = nullptr;
 
     // Widgets
-    void *toplevel_ = nullptr;
-    void *current_temp_value_ = nullptr;
-    void *hourly_avg_value_ = nullptr;
-    void *daily_avg_value_ = nullptr;
-    void *refresh_button_ = nullptr;
-    void *measurement_text_ = nullptr;
+    Widget toplevel_ = nullptr;
+    Widget current_temp_value_ = nullptr;
+    Widget hourly_avg_value_ = nullptr;
+    Widget daily_avg_value_ = nullptr;
+    Widget refresh_button_ = nullptr;
+    Widget measurement_text_ = nullptr;
+
+    XtAppContext app_context_ = nullptr;
 
     // Data
     std::string current_temp_str_;
     std::string hourly_avg_str_;
     std::string daily_avg_str_;
-    std::vector<std::string> measurement_list_data_;
 };
 
 #endif
