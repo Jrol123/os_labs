@@ -7,7 +7,7 @@ endif()
 
 # find_package(PkgConfig REQUIRED)
 find_program(SQLite3 NAMES sqlite3.exe)
-if(!WIN32)
+if(UNIX AND NOT APPLE)
     find_package(libxt-dev REQUIRED)
     find_package(libxaw7-dev REQUIRED)
     find_package(X11 REQUIRED)

@@ -6,6 +6,7 @@
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Command.h>
 #include <X11/Xaw/Text.h>
+#include <X11/Xaw/AsciiText.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
