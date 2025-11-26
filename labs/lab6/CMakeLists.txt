@@ -117,11 +117,7 @@ if(WIN32)
     target_link_libraries(LAB_GUI ws2_32)
     target_link_libraries(LAB_GUI comctl32)
 else()
-    target_link_libraries(LAB_GUI
-            ${X11_LIBRARIES}
-            sqlite3
-            pthread
-        )
+    target_link_libraries(LAB_GUI ${X11_LIBRARIES} sqlite3 pthread)
 endif()
 
 configure_file(
