@@ -11,6 +11,10 @@
 #include <iomanip>
 #include <iostream>
 
+// struct CalllbackData {
+//     TemperatureGUILinux* gui;
+// };
+
 TemperatureGUILinux &TemperatureGUILinux::getInstance()
 {
     static TemperatureGUILinux instance;
@@ -19,14 +23,16 @@ TemperatureGUILinux &TemperatureGUILinux::getInstance()
 
 bool TemperatureGUILinux::initialize(int argc, char **argv)
 {
+    std::cout << "Initializing X11 GUI..." << std::endl;
     // Initialize Xt toolkit
+    XtAppContext app_context;
     toplevel_ = XtVaAppInitialize(
-        nullptr,              // app_context
+        &app_context,         // app_context
         "TemperatureMonitor", // application_class
-        nullptr, 0,           // options
+        NULL, 0,              // options
         &argc, argv,          // command line
-        nullptr,              // fallback_resources
-        nullptr               // args
+        NULL,                 // fallback_resources
+        NULL                  // args
     );
 
     if (!toplevel_)
@@ -36,13 +42,25 @@ bool TemperatureGUILinux::initialize(int argc, char **argv)
     }
 
     createControls();
-    updateDisplay();
+
+    XtAppAddTimeOut(app_context, 100, [](XtPointer client_data, XtIntervalId *id)
+                    {
+        TemperatureGUILinux::getInstance().updateTemperatureData();
+        return false; }, NULL);
+
+    // updateDisplay();
 
     return true;
 }
 
 int TemperatureGUILinux::run()
 {
+    std::cout << "GUI loop starting" << std::endl;
+    if (!toplevel_)
+    {
+        std::cerr << "Toplevel widget is null" << std::endl;
+        return 1;
+    }
     XtRealizeWidget(static_cast<Widget>(toplevel_));
     XtAppMainLoop(XtWidgetToApplicationContext(static_cast<Widget>(toplevel_)));
     return 0;
