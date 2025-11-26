@@ -1,28 +1,101 @@
-#0  0x00007ffff7f57cc0 in XtWidgetToApplicationContext () from /lib/x86_64-linux-gnu/libXt.so.6
-#1  0x00007ffff7f7c49f in XtSetValues () from /lib/x86_64-linux-gnu/libXt.so.6
-#2  0x00007ffff7f07692 in ?? () from /lib/x86_64-linux-gnu/libXaw.so.7
-#3  0x00007ffff7f7b198 in ?? () from /lib/x86_64-linux-gnu/libXt.so.6
-#4  0x00007ffff7f7cdfd in XtSetValues () from /lib/x86_64-linux-gnu/libXt.so.6
-#5  0x00007ffff7f92e3b in XtVaSetValues () from /lib/x86_64-linux-gnu/libXt.so.6
-#6  0x000055555557007c in TemperatureGUILinux::updateDisplay() ()
-#7  0x000055555556f4fe in TemperatureGUILinux::initialize(int, char**) ()
-#8  0x0000555555562b45 in main ()
-
+In file included from /home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:1:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:23:33: error: ‘Widget’ has not been declared
+   23 |     static void refreshCallback(Widget w, void *client_data, void *call_data);
+      |                                 ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:29:5: error: ‘Widget’ does not name a type
+   29 |     Widget toplevel_ = nullptr;
+      |     ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:30:5: error: ‘Widget’ does not name a type
+   30 |     Widget current_temp_value_ = nullptr;
+      |     ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:31:5: error: ‘Widget’ does not name a type
+   31 |     Widget hourly_avg_value_ = nullptr;
+      |     ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:32:5: error: ‘Widget’ does not name a type
+   32 |     Widget daily_avg_value_ = nullptr;
+      |     ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:33:5: error: ‘Widget’ does not name a type
+   33 |     Widget refresh_button_ = nullptr;
+      |     ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:34:5: error: ‘Widget’ does not name a type
+   34 |     Widget measurement_text_ = nullptr;
+      |     ^~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:36:5: error: ‘XtAppContext’ does not name a type
+   36 |     XtAppContext app_context_ = nullptr;
+      |     ^~~~~~~~~~~~
 /home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: In member function ‘bool TemperatureGUILinux::initialize(int, char**)’:
-/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:43:39: error: invalid user-defined conversion from ‘TemperatureGUILinux::initialize(int, char**)::<lambda(XtPointer, XtIntervalId*)>’ to ‘XtTimerCallbackProc’ {aka ‘void (*)(void*, long unsigned int*)’} [-fpermissive]
-   43 |     XtAppAddTimeOut(app_context, 100, [](XtPointer client_data, XtIntervalId *id)
-      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   44 |                     {
-      |                     ~                  
-   45 |         TemperatureGUILinux::getInstance().updateTemperatureData();
-      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   46 |         return False; }, NULL);
-      |         ~~~~~~~~~~~~~~~                
-/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:43:39: note: candidate is: ‘constexpr TemperatureGUILinux::initialize(int, char**)::<lambda(XtPointer, XtIntervalId*)>::operator int (*)(XtPointer, XtIntervalId*)() const’ (near match)
-   43 |     XtAppAddTimeOut(app_context, 100, [](XtPointer client_data, XtIntervalId *id)
-      |                                       ^
-/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:43:39: note:   no known conversion from ‘int (*)(XtPointer, XtIntervalId*)’ {aka ‘int (*)(void*, long unsigned int*)’} to ‘XtTimerCallbackProc’ {aka ‘void (*)(void*, long unsigned int*)’}
-In file included from /home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:2:
-/usr/include/X11/Intrinsic.h:990:5: note:   initializing argument 3 of ‘XtIntervalId XtAppAddTimeOut(XtAppContext, long unsigned int, XtTimerCallbackProc, XtPointer)’
-  990 |     XtTimerCallbackProc /* proc */,
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:25:5: error: ‘toplevel_’ was not declared in this scope
+   25 |     toplevel_ = XtVaAppInitialize(
+      |     ^~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:26:10: error: ‘app_context_’ was not declared in this scope
+   26 |         &app_context_,
+      |          ^~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: In member function ‘int TemperatureGUILinux::run()’:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:47:10: error: ‘toplevel_’ was not declared in this scope
+   47 |     if (!toplevel_)
+      |          ^~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:53:21: error: ‘toplevel_’ was not declared in this scope
+   53 |     XtRealizeWidget(toplevel_);
+      |                     ^~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:56:21: error: ‘app_context_’ was not declared in this scope
+   56 |     XtAppAddTimeOut(app_context_, 2000, timerCallback, this);
+      |                     ^~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: In static member function ‘static void TemperatureGUILinux::timerCallback(void*, void*)’:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:68:26: error: ‘class TemperatureGUILinux’ has no member named ‘app_context_’
+   68 |     XtAppAddTimeOut(gui->app_context_, 2000, timerCallback, gui);
+      |                          ^~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: In member function ‘void TemperatureGUILinux::createControls()’:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:74:68: error: ‘toplevel_’ was not declared in this scope
+   74 |     Widget form = XtVaCreateManagedWidget("form", formWidgetClass, toplevel_,
+      |                                                                    ^~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:93:5: error: ‘current_temp_value_’ was not declared in this scope; did you mean ‘current_temp_label’?
+   93 |     current_temp_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, box,
       |     ^~~~~~~~~~~~~~~~~~~
+      |     current_temp_label
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:104:5: error: ‘hourly_avg_value_’ was not declared in this scope; did you mean ‘hourly_avg_label’?
+  104 |     hourly_avg_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, box,
+      |     ^~~~~~~~~~~~~~~~~
+      |     hourly_avg_label
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:115:5: error: ‘daily_avg_value_’ was not declared in this scope; did you mean ‘daily_avg_label’?
+  115 |     daily_avg_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, box,
+      |     ^~~~~~~~~~~~~~~~
+      |     daily_avg_label
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:121:5: error: ‘refresh_button_’ was not declared in this scope
+  121 |     refresh_button_ = XtVaCreateManagedWidget("Refresh", commandWidgetClass, box,
+      |     ^~~~~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:134:5: error: ‘measurement_text_’ was not declared in this scope; did you mean ‘measurements_label’?
+  134 |     measurement_text_ = XtVaCreateManagedWidget("measurement_text", asciiTextWidgetClass, box,
+      |     ^~~~~~~~~~~~~~~~~
+      |     measurements_label
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: At global scope:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:149:6: error: no declaration matches ‘void TemperatureGUILinux::refreshCallback(Widget, void*, void*)’
+  149 | void TemperatureGUILinux::refreshCallback(Widget w, void *client_data, void *call_data)
+      |      ^~~~~~~~~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:23:17: note: candidate is: ‘static void TemperatureGUILinux::refreshCallback(int, void*, void*)’
+   23 |     static void refreshCallback(Widget w, void *client_data, void *call_data);
+      |                 ^~~~~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.h:8:7: note: ‘class TemperatureGUILinux’ defined here
+    8 | class TemperatureGUILinux
+      |       ^~~~~~~~~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: In member function ‘void TemperatureGUILinux::updateDisplay()’:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:174:23: error: ‘toplevel_’ was not declared in this scope
+  174 |     if (!monitor_ || !toplevel_)
+      |                       ^~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:192:23: error: ‘current_temp_value_’ was not declared in this scope; did you mean ‘current_temp_str_’?
+  192 |         XtVaSetValues(current_temp_value_, XtNlabel, current_temp_str_.c_str(), NULL);
+      |                       ^~~~~~~~~~~~~~~~~~~
+      |                       current_temp_str_
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:198:23: error: ‘hourly_avg_value_’ was not declared in this scope; did you mean ‘hourly_avg_str_’?
+  198 |         XtVaSetValues(hourly_avg_value_, XtNlabel, hourly_avg_str_.c_str(), NULL);
+      |                       ^~~~~~~~~~~~~~~~~
+      |                       hourly_avg_str_
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:204:23: error: ‘daily_avg_value_’ was not declared in this scope; did you mean ‘daily_avg_str_’?
+  204 |         XtVaSetValues(daily_avg_value_, XtNlabel, daily_avg_str_.c_str(), NULL);
+      |                       ^~~~~~~~~~~~~~~~
+      |                       daily_avg_str_
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:225:23: error: ‘measurement_text_’ was not declared in this scope
+  225 |         XtVaSetValues(measurement_text_, XtNstring, text_str.c_str(), NULL);
+      |                       ^~~~~~~~~~~~~~~~~
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:231:23: error: ‘measurement_text_’ was not declared in this scope
+  231 |         XtVaSetValues(measurement_text_, XtNstring, error_msg.c_str(), NULL);
+      |                       ^~~~~~~~~~~~~~~~~
