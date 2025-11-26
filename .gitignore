@@ -58,3 +58,4 @@ build/
 *.log
 *.txt
 !CMakeLists.txt
+*.db
