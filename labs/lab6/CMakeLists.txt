@@ -25,12 +25,11 @@ add_library(common STATIC common/common.cpp common/common.h)
 target_include_directories(common PUBLIC common)
 
 if(WIN32)
-add_library(gui STATIC gui/gui.cpp gui/gui.h)
-target_include_directories(gui PUBLIC gui)
+    add_library(gui STATIC gui/gui.cpp gui/gui.h)
 else()
-add_library(gui STATIC gui/gui_linux.cpp gui/gui_linux.h)
-target_include_directories(gui PUBLIC gui)
+    add_library(gui STATIC gui/gui_linux.cpp gui/gui_linux.h)
 endif()
+target_include_directories(gui PUBLIC gui)
 
 add_library(sqlite3 STATIC sqlite3/sqlite3.c sqlite3/sqlite3.h sqlite3/sqlite3ext.h)
 target_include_directories(sqlite3 PUBLIC sqlite3)
@@ -101,7 +100,7 @@ if(WIN32)
     target_link_libraries(LAB_GUI ws2_32)
     target_link_libraries(LAB_GUI comctl32)
 else()
-    target_link_libraries(test_gui_linux
+    target_link_libraries(LAB_GUI
             ${X11_LIBRARIES}
             sqlite3
             pthread
