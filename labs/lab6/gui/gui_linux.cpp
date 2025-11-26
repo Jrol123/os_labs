@@ -5,8 +5,6 @@
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Command.h>
-#include <X11/Xaw/List.h>
-#include <X11/Xaw/Scrollbar.h>
 #include <X11/Xaw/Text.h>
 #include <X11/Xaw/AsciiText.h>
 #include <sstream>
@@ -14,6 +12,7 @@
 #include <iostream>
 #include <mutex>
 #include <vector>
+#include <iomanip>
 
 TemperatureGUILinux &TemperatureGUILinux::getInstance()
 {
@@ -161,7 +160,7 @@ void TemperatureGUILinux::createControls()
                                                 XtNheight, 25,
                                                 NULL);
 
-    // Create a scrollable text widget for measurements
+    // Create a scrollable text widget for measurements with monospace font
     measurement_list_ = XtVaCreateManagedWidget("measurement_list", asciiTextWidgetClass, main_form_,
                                                 XtNfromHoriz, NULL,
                                                 XtNfromVert, list_label,
@@ -173,6 +172,7 @@ void TemperatureGUILinux::createControls()
                                                 XtNscrollVertical, XawtextScrollAlways,
                                                 XtNlength, 65536,
                                                 XtNstring, "Loading measurements...",
+                                                XtNfont, XLoadQueryFont(XtDisplay(toplevel_), "-misc-fixed-medium-r-normal--13-120-75-75-c-70-iso10646-1"),
                                                 NULL);
 
     XtManageChild(main_form_);
@@ -219,27 +219,27 @@ void TemperatureGUILinux::updateDisplay()
         ss << std::fixed << std::setprecision(2);
 
         // Update current temperature
-        ss << currentTemp << " °C";
+        ss << currentTemp << " C";
         current_temp_str_ = ss.str();
         XtVaSetValues(current_temp_value_, XtNlabel, current_temp_str_.c_str(), NULL);
         ss.str("");
 
         // Update hourly average
-        ss << hourlyAvg << " °C";
+        ss << hourlyAvg << " C";
         hourly_avg_str_ = ss.str();
         XtVaSetValues(hourly_avg_value_, XtNlabel, hourly_avg_str_.c_str(), NULL);
         ss.str("");
 
         // Update daily average
-        ss << dailyAvg << " °C";
+        ss << dailyAvg << " C";
         daily_avg_str_ = ss.str();
         XtVaSetValues(daily_avg_value_, XtNlabel, daily_avg_str_.c_str(), NULL);
         ss.str("");
 
         // Update measurement list as formatted text
         auto recentMeasurements = monitor_->getRecentMeasurements(20);
-        std::string text_str = "Time                Temperature  Status\n";
-        text_str += "--------------------------------------------------\n";
+        std::string text_str = "Time                Temperature Status\n";
+        text_str += "----------------------------------------\n";
 
         for (const auto &measurement : recentMeasurements)
         {
@@ -247,28 +247,31 @@ void TemperatureGUILinux::updateDisplay()
             double temp = measurement.second;
 
             ss << std::fixed << std::setprecision(2) << temp;
-            std::string tempStr = ss.str() + " °C";
+            std::string tempStr = ss.str() + " C";
             ss.str("");
 
-            // Determine status with visual indicators
+            // Determine status with ASCII indicators
             std::string statusStr;
             if (temp >= 18 && temp <= 28)
             {
-                statusStr = "● Normal";
+                statusStr = "[OK] Normal";
             }
             else if ((temp >= 15 && temp < 18) || (temp > 28 && temp <= 32))
             {
-                statusStr = "● Warning";
+                statusStr = "[!] Warning";
             }
             else
             {
-                statusStr = "● Critical";
+                statusStr = "[X] Critical";
             }
 
-            // Format with fixed column widths
-            std::string line = timeStr + std::string(20 - std::min(20, (int)timeStr.length()), ' ') +
-                               tempStr + std::string(15 - std::min(15, (int)tempStr.length()), ' ') +
-                               statusStr + "\n";
+            // Format with fixed column widths using proper padding
+            std::string line = timeStr;
+            line.append(20 - std::min(20, (int)timeStr.length()), ' ');
+            line += tempStr;
+            line.append(12 - std::min(12, (int)tempStr.length()), ' ');
+            line += statusStr;
+            line += "\n";
 
             text_str += line;
         }
