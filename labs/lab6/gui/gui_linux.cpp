@@ -5,7 +5,8 @@
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Command.h>
-#include <X11/Xaw/AsciiText.h>
+#include <X11/Xaw/List.h>
+#include <X11/Xaw/Scrollbar.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
@@ -65,7 +66,6 @@ void TemperatureGUILinux::timerCallback(void *client_data, void *id)
     if (gui)
     {
         gui->updateTemperatureData();
-
         // Reschedule timer
         XtAppAddTimeOut(gui->app_context_, 2000, (XtTimerCallbackProc)timerCallback, (XtPointer)gui);
     }
@@ -73,80 +73,110 @@ void TemperatureGUILinux::timerCallback(void *client_data, void *id)
 
 void TemperatureGUILinux::createControls()
 {
-    // Create main form with better sizing
-    Widget form = XtVaCreateManagedWidget("form", formWidgetClass, toplevel_,
-                                          XtNwidth, 600,
-                                          XtNheight, 500,
-                                          NULL);
-
-    // Create a box for better layout
-    Widget box = XtVaCreateManagedWidget("box", boxWidgetClass, form,
-                                         XtNfromHoriz, NULL,
-                                         XtNfromVert, NULL,
-                                         XtNwidth, 580,
-                                         XtNheight, 480,
+    // Create main form
+    main_form_ = XtVaCreateManagedWidget("main_form", formWidgetClass, toplevel_,
+                                         XtNwidth, 800,
+                                         XtNheight, 600,
                                          NULL);
 
     // Current temperature
-    Widget current_temp_label = XtVaCreateManagedWidget("Current Temperature:", labelWidgetClass, box,
+    Widget current_temp_label = XtVaCreateManagedWidget("Current Temperature:", labelWidgetClass, main_form_,
                                                         XtNfromHoriz, NULL,
                                                         XtNfromVert, NULL,
+                                                        XtNx, 20,
+                                                        XtNy, 20,
+                                                        XtNwidth, 200,
+                                                        XtNheight, 25,
                                                         NULL);
 
-    current_temp_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, box,
+    current_temp_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, main_form_,
                                                   XtNfromHoriz, current_temp_label,
                                                   XtNfromVert, NULL,
+                                                  XtNx, 220,
+                                                  XtNy, 20,
+                                                  XtNwidth, 100,
+                                                  XtNheight, 25,
                                                   NULL);
 
     // Hourly average
-    Widget hourly_avg_label = XtVaCreateManagedWidget("Hourly Average:", labelWidgetClass, box,
+    Widget hourly_avg_label = XtVaCreateManagedWidget("Hourly Average:", labelWidgetClass, main_form_,
                                                       XtNfromHoriz, NULL,
                                                       XtNfromVert, current_temp_label,
+                                                      XtNx, 20,
+                                                      XtNy, 50,
+                                                      XtNwidth, 200,
+                                                      XtNheight, 25,
                                                       NULL);
 
-    hourly_avg_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, box,
+    hourly_avg_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, main_form_,
                                                 XtNfromHoriz, hourly_avg_label,
                                                 XtNfromVert, current_temp_value_,
+                                                XtNx, 220,
+                                                XtNy, 50,
+                                                XtNwidth, 100,
+                                                XtNheight, 25,
                                                 NULL);
 
     // Daily average
-    Widget daily_avg_label = XtVaCreateManagedWidget("Daily Average:", labelWidgetClass, box,
+    Widget daily_avg_label = XtVaCreateManagedWidget("Daily Average:", labelWidgetClass, main_form_,
                                                      XtNfromHoriz, NULL,
                                                      XtNfromVert, hourly_avg_label,
+                                                     XtNx, 20,
+                                                     XtNy, 80,
+                                                     XtNwidth, 200,
+                                                     XtNheight, 25,
                                                      NULL);
 
-    daily_avg_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, box,
+    daily_avg_value_ = XtVaCreateManagedWidget("Loading...", labelWidgetClass, main_form_,
                                                XtNfromHoriz, daily_avg_label,
                                                XtNfromVert, hourly_avg_value_,
+                                               XtNx, 220,
+                                               XtNy, 80,
+                                               XtNwidth, 100,
+                                               XtNheight, 25,
                                                NULL);
 
     // Refresh button
-    refresh_button_ = XtVaCreateManagedWidget("Refresh", commandWidgetClass, box,
+    refresh_button_ = XtVaCreateManagedWidget("Refresh", commandWidgetClass, main_form_,
                                               XtNfromHoriz, NULL,
                                               XtNfromVert, daily_avg_label,
+                                              XtNx, 350,
+                                              XtNy, 20,
+                                              XtNwidth, 100,
+                                              XtNheight, 30,
                                               NULL);
 
     XtAddCallback(refresh_button_, XtNcallback, refreshCallback, this);
 
-    // Measurement list
-    Widget measurements_label = XtVaCreateManagedWidget("Recent Measurements:", labelWidgetClass, box,
-                                                        XtNfromHoriz, NULL,
-                                                        XtNfromVert, refresh_button_,
-                                                        NULL);
-
-    measurement_text_ = XtVaCreateManagedWidget("measurement_text", asciiTextWidgetClass, box,
+    // Measurement list label
+    Widget list_label = XtVaCreateManagedWidget("Recent Measurements:", labelWidgetClass, main_form_,
                                                 XtNfromHoriz, NULL,
-                                                XtNfromVert, measurements_label,
-                                                XtNeditType, XawtextRead,
-                                                XtNscrollVertical, XawtextScrollAlways,
-                                                XtNlength, 4096,
-                                                XtNwidth, 550,
-                                                XtNheight, 300,
-                                                XtNstring, "No measurement data available yet...",
+                                                XtNfromVert, refresh_button_,
+                                                XtNx, 20,
+                                                XtNy, 120,
+                                                XtNwidth, 200,
+                                                XtNheight, 25,
                                                 NULL);
 
-    XtManageChild(box);
-    XtManageChild(form);
+    // Create a container for the list with scrollbar
+    list_container_ = XtVaCreateManagedWidget("list_container", boxWidgetClass, main_form_,
+                                              XtNfromHoriz, NULL,
+                                              XtNfromVert, list_label,
+                                              XtNx, 20,
+                                              XtNy, 150,
+                                              XtNwidth, 740,
+                                              XtNheight, 400,
+                                              NULL);
+
+    // Create list widget
+    measurement_list_ = XtVaCreateManagedWidget("measurement_list", listWidgetClass, list_container_,
+                                                XtNwidth, 720,
+                                                XtNheight, 380,
+                                                XtNlist, NULL, // Will be set dynamically
+                                                XtNnumberStrings, 0,
+                                                NULL);
+
+    XtManageChild(main_form_);
 }
 
 void TemperatureGUILinux::refreshCallback(Widget w, void *client_data, void *call_data)
@@ -208,29 +238,103 @@ void TemperatureGUILinux::updateDisplay()
         ss.str("");
 
         // Update measurement list
-        auto recentMeasurements = monitor_->getRecentMeasurements(15);
-        std::string text_str = "Time                - Temperature\n";
-        text_str += "------------------------------------\n";
+        auto recentMeasurements = monitor_->getRecentMeasurements(20);
+        list_items_.clear();
+
+        // Add header
+        list_items_.push_back("Time                Temperature  Status");
 
         for (const auto &measurement : recentMeasurements)
         {
             std::string timeStr = common::timeToString(measurement.first);
-            ss << std::fixed << std::setprecision(2) << measurement.second;
-            text_str += timeStr + " - " + ss.str() + " °C\n";
+            double temp = measurement.second;
+
+            ss << std::fixed << std::setprecision(2) << temp;
+            std::string tempStr = ss.str() + " °C";
             ss.str("");
+
+            // Determine status with color indicators
+            std::string statusStr;
+            if (temp >= 18 && temp <= 28)
+            {
+                statusStr = "● Normal"; // Green bullet
+            }
+            else if ((temp >= 15 && temp < 18) || (temp > 28 && temp <= 32))
+            {
+                statusStr = "● Warning"; // Yellow bullet
+            }
+            else
+            {
+                statusStr = "● Critical"; // Red bullet
+            }
+
+            // Format the line with fixed column widths
+            std::string line = timeStr + std::string(20 - timeStr.length(), ' ') +
+                               tempStr + std::string(12 - tempStr.length(), ' ') +
+                               statusStr;
+
+            list_items_.push_back(line);
         }
 
         if (recentMeasurements.empty())
         {
-            text_str += "No measurements available";
+            list_items_.push_back("No measurements available");
         }
 
-        XtVaSetValues(measurement_text_, XtNstring, text_str.c_str(), NULL);
+        // Convert vector to Xt StringList
+        XawListReturnStruct **string_list = (XawListReturnStruct **)XtMalloc(sizeof(XawListReturnStruct *) * (list_items_.size() + 1));
+
+        for (size_t i = 0; i < list_items_.size(); ++i)
+        {
+            string_list[i] = (XawListReturnStruct *)XtMalloc(sizeof(XawListReturnStruct));
+            string_list[i]->string = XtNewString(list_items_[i].c_str());
+            string_list[i]->text_proc = NULL;
+        }
+        string_list[list_items_.size()] = NULL;
+
+        // Update the list
+        XtVaSetValues(measurement_list_,
+                      XtNlist, string_list,
+                      XtNnumberStrings, list_items_.size(),
+                      NULL);
+
+        // Free the allocated memory
+        for (size_t i = 0; i < list_items_.size(); ++i)
+        {
+            XtFree(string_list[i]->string);
+            XtFree((char *)string_list[i]);
+        }
+        XtFree((char *)string_list);
     }
     catch (const std::exception &e)
     {
         std::cerr << "Error updating display: " << e.what() << std::endl;
-        std::string error_msg = "Error: " + std::string(e.what());
-        XtVaSetValues(measurement_text_, XtNstring, error_msg.c_str(), NULL);
+
+        // Show error in list
+        list_items_.clear();
+        list_items_.push_back("Error loading data:");
+        list_items_.push_back(e.what());
+
+        XawListReturnStruct **string_list = (XawListReturnStruct **)XtMalloc(sizeof(XawListReturnStruct *) * 3);
+        string_list[0] = (XawListReturnStruct *)XtMalloc(sizeof(XawListReturnStruct));
+        string_list[0]->string = XtNewString(list_items_[0].c_str());
+        string_list[0]->text_proc = NULL;
+
+        string_list[1] = (XawListReturnStruct *)XtMalloc(sizeof(XawListReturnStruct));
+        string_list[1]->string = XtNewString(list_items_[1].c_str());
+        string_list[1]->text_proc = NULL;
+
+        string_list[2] = NULL;
+
+        XtVaSetValues(measurement_list_,
+                      XtNlist, string_list,
+                      XtNnumberStrings, 2,
+                      NULL);
+
+        XtFree(string_list[0]->string);
+        XtFree((char *)string_list[0]);
+        XtFree(string_list[1]->string);
+        XtFree((char *)string_list[1]);
+        XtFree((char *)string_list);
     }
 }

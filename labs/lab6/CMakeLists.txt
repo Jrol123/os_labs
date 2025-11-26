@@ -26,7 +26,7 @@ if(UNIX AND NOT APPLE)
             ${XMU_LIB}
             ${XEXT_LIB}
         )
-        message(STATUS "X11 libraries found: ${X11_LIBRARIES}")
+        # message(STATUS "X11 libraries found: ${X11_LIBRARIES}")
     else()
         message(WARNING "X11 not found - GUI will not be available")
     endif()
