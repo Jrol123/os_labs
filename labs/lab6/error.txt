@@ -1,0 +1,28 @@
+#0  0x00007ffff7f57cc0 in XtWidgetToApplicationContext () from /lib/x86_64-linux-gnu/libXt.so.6
+#1  0x00007ffff7f7c49f in XtSetValues () from /lib/x86_64-linux-gnu/libXt.so.6
+#2  0x00007ffff7f07692 in ?? () from /lib/x86_64-linux-gnu/libXaw.so.7
+#3  0x00007ffff7f7b198 in ?? () from /lib/x86_64-linux-gnu/libXt.so.6
+#4  0x00007ffff7f7cdfd in XtSetValues () from /lib/x86_64-linux-gnu/libXt.so.6
+#5  0x00007ffff7f92e3b in XtVaSetValues () from /lib/x86_64-linux-gnu/libXt.so.6
+#6  0x000055555557007c in TemperatureGUILinux::updateDisplay() ()
+#7  0x000055555556f4fe in TemperatureGUILinux::initialize(int, char**) ()
+#8  0x0000555555562b45 in main ()
+
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp: In member function ‘bool TemperatureGUILinux::initialize(int, char**)’:
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:43:39: error: invalid user-defined conversion from ‘TemperatureGUILinux::initialize(int, char**)::<lambda(XtPointer, XtIntervalId*)>’ to ‘XtTimerCallbackProc’ {aka ‘void (*)(void*, long unsigned int*)’} [-fpermissive]
+   43 |     XtAppAddTimeOut(app_context, 100, [](XtPointer client_data, XtIntervalId *id)
+      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   44 |                     {
+      |                     ~                  
+   45 |         TemperatureGUILinux::getInstance().updateTemperatureData();
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   46 |         return False; }, NULL);
+      |         ~~~~~~~~~~~~~~~                
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:43:39: note: candidate is: ‘constexpr TemperatureGUILinux::initialize(int, char**)::<lambda(XtPointer, XtIntervalId*)>::operator int (*)(XtPointer, XtIntervalId*)() const’ (near match)
+   43 |     XtAppAddTimeOut(app_context, 100, [](XtPointer client_data, XtIntervalId *id)
+      |                                       ^
+/home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:43:39: note:   no known conversion from ‘int (*)(XtPointer, XtIntervalId*)’ {aka ‘int (*)(void*, long unsigned int*)’} to ‘XtTimerCallbackProc’ {aka ‘void (*)(void*, long unsigned int*)’}
+In file included from /home/admin228/os_labs/labs/lab6/gui/gui_linux.cpp:2:
+/usr/include/X11/Intrinsic.h:990:5: note:   initializing argument 3 of ‘XtIntervalId XtAppAddTimeOut(XtAppContext, long unsigned int, XtTimerCallbackProc, XtPointer)’
+  990 |     XtTimerCallbackProc /* proc */,
+      |     ^~~~~~~~~~~~~~~~~~~
