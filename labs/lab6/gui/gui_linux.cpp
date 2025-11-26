@@ -7,10 +7,13 @@
 #include <X11/Xaw/Command.h>
 #include <X11/Xaw/List.h>
 #include <X11/Xaw/Scrollbar.h>
+#include <X11/Xaw/Text.h>
+#include <X11/Xaw/AsciiText.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
+#include <vector>
 
 TemperatureGUILinux &TemperatureGUILinux::getInstance()
 {
@@ -158,22 +161,18 @@ void TemperatureGUILinux::createControls()
                                                 XtNheight, 25,
                                                 NULL);
 
-    // Create a container for the list with scrollbar
-    list_container_ = XtVaCreateManagedWidget("list_container", boxWidgetClass, main_form_,
-                                              XtNfromHoriz, NULL,
-                                              XtNfromVert, list_label,
-                                              XtNx, 20,
-                                              XtNy, 150,
-                                              XtNwidth, 740,
-                                              XtNheight, 400,
-                                              NULL);
-
-    // Create list widget
-    measurement_list_ = XtVaCreateManagedWidget("measurement_list", listWidgetClass, list_container_,
-                                                XtNwidth, 720,
-                                                XtNheight, 380,
-                                                XtNlist, NULL, // Will be set dynamically
-                                                XtNnumberStrings, 0,
+    // Create a scrollable text widget for measurements
+    measurement_list_ = XtVaCreateManagedWidget("measurement_list", asciiTextWidgetClass, main_form_,
+                                                XtNfromHoriz, NULL,
+                                                XtNfromVert, list_label,
+                                                XtNx, 20,
+                                                XtNy, 150,
+                                                XtNwidth, 740,
+                                                XtNheight, 400,
+                                                XtNeditType, XawtextRead,
+                                                XtNscrollVertical, XawtextScrollAlways,
+                                                XtNlength, 65536,
+                                                XtNstring, "Loading measurements...",
                                                 NULL);
 
     XtManageChild(main_form_);
@@ -237,12 +236,10 @@ void TemperatureGUILinux::updateDisplay()
         XtVaSetValues(daily_avg_value_, XtNlabel, daily_avg_str_.c_str(), NULL);
         ss.str("");
 
-        // Update measurement list
+        // Update measurement list as formatted text
         auto recentMeasurements = monitor_->getRecentMeasurements(20);
-        list_items_.clear();
-
-        // Add header
-        list_items_.push_back("Time                Temperature  Status");
+        std::string text_str = "Time                Temperature  Status\n";
+        text_str += "--------------------------------------------------\n";
 
         for (const auto &measurement : recentMeasurements)
         {
@@ -253,88 +250,41 @@ void TemperatureGUILinux::updateDisplay()
             std::string tempStr = ss.str() + " °C";
             ss.str("");
 
-            // Determine status with color indicators
+            // Determine status with visual indicators
             std::string statusStr;
             if (temp >= 18 && temp <= 28)
             {
-                statusStr = "● Normal"; // Green bullet
+                statusStr = "● Normal";
             }
             else if ((temp >= 15 && temp < 18) || (temp > 28 && temp <= 32))
             {
-                statusStr = "● Warning"; // Yellow bullet
+                statusStr = "● Warning";
             }
             else
             {
-                statusStr = "● Critical"; // Red bullet
+                statusStr = "● Critical";
             }
 
-            // Format the line with fixed column widths
-            std::string line = timeStr + std::string(20 - timeStr.length(), ' ') +
-                               tempStr + std::string(12 - tempStr.length(), ' ') +
-                               statusStr;
+            // Format with fixed column widths
+            std::string line = timeStr + std::string(20 - std::min(20, (int)timeStr.length()), ' ') +
+                               tempStr + std::string(15 - std::min(15, (int)tempStr.length()), ' ') +
+                               statusStr + "\n";
 
-            list_items_.push_back(line);
+            text_str += line;
         }
 
         if (recentMeasurements.empty())
         {
-            list_items_.push_back("No measurements available");
+            text_str += "No measurements available\n";
         }
 
-        // Convert vector to Xt StringList
-        XawListReturnStruct **string_list = (XawListReturnStruct **)XtMalloc(sizeof(XawListReturnStruct *) * (list_items_.size() + 1));
-
-        for (size_t i = 0; i < list_items_.size(); ++i)
-        {
-            string_list[i] = (XawListReturnStruct *)XtMalloc(sizeof(XawListReturnStruct));
-            string_list[i]->string = XtNewString(list_items_[i].c_str());
-            string_list[i]->text_proc = NULL;
-        }
-        string_list[list_items_.size()] = NULL;
-
-        // Update the list
-        XtVaSetValues(measurement_list_,
-                      XtNlist, string_list,
-                      XtNnumberStrings, list_items_.size(),
-                      NULL);
-
-        // Free the allocated memory
-        for (size_t i = 0; i < list_items_.size(); ++i)
-        {
-            XtFree(string_list[i]->string);
-            XtFree((char *)string_list[i]);
-        }
-        XtFree((char *)string_list);
+        // Update the text widget
+        XtVaSetValues(measurement_list_, XtNstring, text_str.c_str(), NULL);
     }
     catch (const std::exception &e)
     {
         std::cerr << "Error updating display: " << e.what() << std::endl;
-
-        // Show error in list
-        list_items_.clear();
-        list_items_.push_back("Error loading data:");
-        list_items_.push_back(e.what());
-
-        XawListReturnStruct **string_list = (XawListReturnStruct **)XtMalloc(sizeof(XawListReturnStruct *) * 3);
-        string_list[0] = (XawListReturnStruct *)XtMalloc(sizeof(XawListReturnStruct));
-        string_list[0]->string = XtNewString(list_items_[0].c_str());
-        string_list[0]->text_proc = NULL;
-
-        string_list[1] = (XawListReturnStruct *)XtMalloc(sizeof(XawListReturnStruct));
-        string_list[1]->string = XtNewString(list_items_[1].c_str());
-        string_list[1]->text_proc = NULL;
-
-        string_list[2] = NULL;
-
-        XtVaSetValues(measurement_list_,
-                      XtNlist, string_list,
-                      XtNnumberStrings, 2,
-                      NULL);
-
-        XtFree(string_list[0]->string);
-        XtFree((char *)string_list[0]);
-        XtFree(string_list[1]->string);
-        XtFree((char *)string_list[1]);
-        XtFree((char *)string_list);
+        std::string error_msg = "Error loading data:\n" + std::string(e.what());
+        XtVaSetValues(measurement_list_, XtNstring, error_msg.c_str(), NULL);
     }
 }

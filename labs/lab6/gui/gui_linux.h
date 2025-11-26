@@ -4,7 +4,6 @@
 #include "temperature_monitor.h"
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
-#include <X11/Xaw/List.h>
 #include <string>
 #include <vector>
 
@@ -36,7 +35,6 @@ private:
     Widget daily_avg_value_ = nullptr;
     Widget refresh_button_ = nullptr;
     Widget measurement_list_ = nullptr;
-    Widget list_container_ = nullptr;
 
     XtAppContext app_context_ = nullptr;
 
@@ -44,9 +42,6 @@ private:
     std::string current_temp_str_;
     std::string hourly_avg_str_;
     std::string daily_avg_str_;
-
-    // For list management
-    std::vector<std::string> list_items_;
 };
 
 #endif
