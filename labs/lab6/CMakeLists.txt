@@ -8,8 +8,9 @@ endif()
 # find_package(PkgConfig REQUIRED)
 find_program(SQLite3 NAMES sqlite3.exe)
 if(!WIN32)
-    find_package(libxt-dev)
-    find_package(libxaw7-dev)
+    find_package(libxt-dev REQUIRED)
+    find_package(libxaw7-dev REQUIRED)
+    find_package(X11 REQUIRED)
 endif()
 # if(WIN32)
     # find_file(SQLite3 NAMES sqlite3d.dll)
@@ -81,9 +82,9 @@ endif()
 
 # GUI
 if(WIN32)
-add_executable(LAB_GUI test/test_GUI.cpp)
+    add_executable(LAB_GUI test/test_gui.cpp)
 else()
-add_executable(LAB_GUI test/test_gui_linux.cpp)
+    add_executable(LAB_GUI test/test_gui_linux.cpp)
 endif()
 target_link_libraries(LAB_GUI common)
 target_link_libraries(LAB_GUI sqlite3)
@@ -99,6 +100,12 @@ if(WIN32)
     target_link_libraries(http_server ws2_32)
     target_link_libraries(LAB_GUI ws2_32)
     target_link_libraries(LAB_GUI comctl32)
+else()
+    target_link_libraries(test_gui_linux
+            ${X11_LIBRARIES}
+            sqlite3
+            pthread
+        )
 endif()
 
 configure_file(
