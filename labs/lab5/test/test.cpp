@@ -26,7 +26,7 @@ void testWithHTTPServer(std::chrono::seconds test_duration,
     HTTPServer server(TemperatureMonitor::getInstance());
 
     server.setRefreshInterval(10); //! Не ставьте слишком маленькое значение, иначе браузер не будет просто успевать подгружать html-ку!
-    server.setMaxMeasurements(10); // Показывать последние 20 измерений
+    server.setMaxMeasurements(10);
 
     if (!server.start(8080))
     {
