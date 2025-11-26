@@ -6,9 +6,18 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <atomic>
+#include <csignal>
 
-void runTemperatureSystem(std::chrono::seconds test_duration,
-                          std::chrono::seconds measurement_interval)
+std::atomic<bool> shutdown_requested{false};
+
+void signalHandler(int signal)
+{
+    std::cout << "Received shutdown signal..." << std::endl;
+    shutdown_requested = true;
+}
+
+void runTemperatureSystem(std::chrono::seconds measurement_interval)
 {
     std::cout << "Starting Temperature Monitoring System..." << std::endl;
 
@@ -22,9 +31,32 @@ void runTemperatureSystem(std::chrono::seconds test_duration,
         return;
     }
 
-    // Start HTTP server in separate thread
-    std::thread http_server_thread([]()
-                                   {
+    // Temperature emulator
+    TemperatureEmulator emulator(25.0, 1.0, 0.05);
+
+    // Main measurement loop
+    while (!shutdown_requested)
+    {
+        try
+        {
+            double temp = emulator.getCurrentTemperature();
+            TemperatureMonitor::getInstance().logTemperature(temp);
+            std::this_thread::sleep_for(measurement_interval);
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error in temperature system: " << e.what() << std::endl;
+        }
+    }
+
+    TemperatureMonitor::getInstance().shutdown();
+    std::cout << "Temperature system stopped" << std::endl;
+}
+
+void runHttpServer()
+{
+    try
+    {
         HTTPServer server(TemperatureMonitor::getInstance());
         server.setRefreshInterval(10);
         server.setMaxMeasurements(10);
@@ -38,37 +70,48 @@ void runTemperatureSystem(std::chrono::seconds test_duration,
         std::cout << "HTTP server started on port 8080" << std::endl;
         std::cout << "Open http://localhost:8080 in your browser" << std::endl;
 
-        while (server.isRunning())
+        while (server.isRunning() && !shutdown_requested)
         {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-        } });
+        }
 
-    // Temperature emulator
-    TemperatureEmulator emulator(25.0, 1.0, 0.05);
-
-    // Main measurement loop
-    auto start_time = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start_time < test_duration)
-    {
-        double temp = emulator.getCurrentTemperature();
-        TemperatureMonitor::getInstance().logTemperature(temp);
-        std::this_thread::sleep_for(measurement_interval);
+        server.stop();
+        std::cout << "HTTP server stopped" << std::endl;
     }
-
-    http_server_thread.detach();
-    TemperatureMonitor::getInstance().shutdown();
-    std::cout << "Temperature system completed" << std::endl;
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error in HTTP server: " << e.what() << std::endl;
+    }
 }
 
 int main(int argc, char *argv[])
 {
+    // Setup signal handling
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
     common::createDirectory("data");
+
     try
     {
+        // Initialize monitor first
+        TemperatureMonitor::Config config;
+        config.console_output = false;
+        config.measurement_interval = std::chrono::seconds(1);
+
+        if (!TemperatureMonitor::getInstance().initialize(config))
+        {
+            std::cerr << "Failed to initialize temperature monitor" << std::endl;
+            return 1;
+        }
+
+        // Start HTTP server in separate thread
+        std::thread http_thread([]()
+                                { runHttpServer(); });
+
         // Start temperature system in separate thread
         std::thread temp_thread([]()
-                                { runTemperatureSystem(std::chrono::seconds(3600), std::chrono::seconds(1)); });
-        temp_thread.detach();
+                                { runTemperatureSystem(std::chrono::seconds(1)); });
 
         // Initialize and run Linux GUI
         TemperatureGUILinux &gui = TemperatureGUILinux::getInstance();
@@ -77,10 +120,28 @@ int main(int argc, char *argv[])
         if (!gui.initialize(argc, argv))
         {
             std::cerr << "Failed to initialize GUI" << std::endl;
-            return 1;
+            shutdown_requested = true;
+        }
+        else
+        {
+            std::cout << "Starting GUI main loop..." << std::endl;
+            gui.run();
         }
 
-        return gui.run();
+        // Cleanup
+        shutdown_requested = true;
+
+        if (http_thread.joinable())
+        {
+            http_thread.join();
+        }
+
+        if (temp_thread.joinable())
+        {
+            temp_thread.join();
+        }
+
+        std::cout << "Application shutdown complete" << std::endl;
     }
     catch (const std::exception &e)
     {
