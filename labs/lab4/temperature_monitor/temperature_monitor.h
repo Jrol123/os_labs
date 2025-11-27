@@ -7,6 +7,8 @@
 #include <mutex>
 #include <vector>
 #include <deque>
+#include <atomic> // Добавлено
+#include <thread> // Добавлено
 
 // Монитор температуры
 class TemperatureMonitor
@@ -50,6 +52,11 @@ public:
     // Остановка монитора
     void shutdown();
 
+    // Настройка COM-порта для чтения данных
+    bool setupComPort(const std::string &port_name = "COM1");
+    void startComPortReading();
+    void stopComPortReading();
+
 private:
     TemperatureMonitor() = default;
     ~TemperatureMonitor();
@@ -78,6 +85,10 @@ private:
     std::chrono::milliseconds getHourDuration() const;
     std::chrono::milliseconds getDayDuration() const;
     std::chrono::milliseconds getYearDuration() const;
+
+    // Методы для работы с COM-портом
+    void comPortReadingThread();
+    bool readTemperatureFromComPort();
 
 private:
     Config config_;
@@ -116,6 +127,13 @@ private:
     // Текущие даты для ротации
     std::string current_date_;
     std::string current_hour_;
+
+    // Новые члены класса для COM-порта
+    class SerialPort; // Предварительное объявление вместо включения заголовка
+    std::unique_ptr<SerialPort> com_port_;
+    std::thread com_reading_thread_;
+    std::atomic<bool> com_reading_active_{false};
+    std::string com_port_name_;
 };
 
 #endif

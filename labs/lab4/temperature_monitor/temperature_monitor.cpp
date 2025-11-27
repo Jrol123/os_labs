@@ -1,11 +1,21 @@
 #include "temperature_monitor.h"
 #include "time_manager.h"
 #include "common.h"
+#include "serial_port_wrapper.h"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <numeric>
 #include <thread>
+#include <sstream>
+#include <cmath>
+
+// Добавляем определение SerialPort как SerialPortWrapper
+class TemperatureMonitor::SerialPort
+{
+public:
+    SerialPortWrapper wrapper;
+};
 
 std::chrono::milliseconds TemperatureMonitor::getHourDuration() const
 {
@@ -27,6 +37,7 @@ TemperatureMonitor &TemperatureMonitor::getInstance()
     static TemperatureMonitor instance;
     return instance;
 }
+
 bool TemperatureMonitor::initialize(const Config &config)
 {
     std::lock_guard<std::mutex> lock(log_mutex_);
@@ -77,6 +88,7 @@ bool TemperatureMonitor::initialize(const Config &config)
     return true;
 }
 
+// Вспомогательные методы
 void TemperatureMonitor::addToHourlyBuffer(double temperature, const common::TimePoint &timestamp)
 {
     TemperatureReading reading{temperature, timestamp};
@@ -442,8 +454,111 @@ void TemperatureMonitor::setMeasurementInterval(std::chrono::milliseconds interv
     config_.measurement_interval = interval;
 }
 
+// Методы для работы с COM-портом:
+
+bool TemperatureMonitor::setupComPort(const std::string &port_name)
+{
+    std::lock_guard<std::mutex> lock(log_mutex_);
+
+    com_port_name_ = port_name;
+    com_port_ = std::make_unique<SerialPort>();
+
+    if (!com_port_->wrapper.open(port_name))
+    {
+        std::cerr << "Failed to open COM port for reading: " << port_name << std::endl;
+        return false;
+    }
+
+    std::cout << "COM port configured for reading: " << port_name << std::endl;
+    return true;
+}
+
+void TemperatureMonitor::startComPortReading()
+{
+    if (com_reading_active_ || !com_port_ || !com_port_->wrapper.isOpen())
+    {
+        return;
+    }
+
+    com_reading_active_ = true;
+    com_reading_thread_ = std::thread(&TemperatureMonitor::comPortReadingThread, this);
+    std::cout << "COM port reading started" << std::endl;
+}
+
+void TemperatureMonitor::stopComPortReading()
+{
+    com_reading_active_ = false;
+    if (com_reading_thread_.joinable())
+    {
+        com_reading_thread_.join();
+    }
+
+    if (com_port_)
+    {
+        com_port_->wrapper.close();
+    }
+
+    std::cout << "COM port reading stopped" << std::endl;
+}
+
+void TemperatureMonitor::comPortReadingThread()
+{
+    while (com_reading_active_)
+    {
+        if (readTemperatureFromComPort())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    }
+}
+
+bool TemperatureMonitor::readTemperatureFromComPort()
+{
+    if (!com_port_ || !com_port_->wrapper.isOpen())
+    {
+        return false;
+    }
+
+    std::string data;
+    if (!com_port_->wrapper.read(data, 1.0) || data.empty())
+    {
+        return false;
+    }
+
+    // Парсим данные в формате "TEMP:25.5"
+    if (data.find("TEMP:") == 0)
+    {
+        try
+        {
+            std::string temp_str = data.substr(5);
+            // Убираем возможные символы новой строки
+            temp_str.erase(std::remove(temp_str.begin(), temp_str.end(), '\n'), temp_str.end());
+            temp_str.erase(std::remove(temp_str.begin(), temp_str.end(), '\r'), temp_str.end());
+
+            double temperature = std::stod(temp_str);
+
+            // Логируем полученную температуру
+            logTemperature(temperature);
+            return true;
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Failed to parse temperature from COM port: " << e.what()
+                      << ", data: " << data << std::endl;
+        }
+    }
+
+    return false;
+}
+
 void TemperatureMonitor::shutdown()
 {
+    stopComPortReading(); // Останавливаем чтение COM-порта
+
     std::lock_guard<std::mutex> lock(log_mutex_);
 
     // Рассчитываем финальные средние
