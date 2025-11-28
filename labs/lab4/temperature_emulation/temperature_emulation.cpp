@@ -6,11 +6,11 @@ TemperatureEmulator::TemperatureEmulator(double base_temp,
                                          double amplitude,
                                          double noise_level)
     : base_temperature_(base_temp),
-      amplitude_(amplitude),
-      noise_level_(noise_level),
-      daily_cycle_enabled_(true),
-      random_engine_(std::random_device{}()),
-      noise_distribution_(0.0, noise_level)
+    amplitude_(amplitude),
+    noise_level_(noise_level),
+    daily_cycle_enabled_(true),
+    random_engine_(std::random_device{}()),
+    noise_distribution_(0.0, noise_level)
 {
 }
 
@@ -98,10 +98,4 @@ void TemperatureEmulator::enableDailyCycle(bool enable)
 void TemperatureEmulator::setCustomGenerator(std::function<double()> generator)
 {
     custom_generator_ = generator;
-}
-
-std::shared_ptr<TemperatureEmulator> TemperatureEmulator::createTemperatureEmulator(
-    double base_temp, double amplitude, double noise_level)
-{
-    return std::make_shared<TemperatureEmulator>(base_temp, amplitude, noise_level);
 }

@@ -9,7 +9,7 @@
 // Эмулятор температуры
 class TemperatureEmulator
 {
-public: 
+public:
     // Эмулятор температуры
     TemperatureEmulator(double base_temp = 20.0,
                         double amplitude = 5.0,
@@ -27,11 +27,6 @@ public:
     void enableDailyCycle(bool enable);
     // Установить кастомный генератор температуры
     void setCustomGenerator(std::function<double()> generator);
-
-    std::shared_ptr<TemperatureEmulator> createTemperatureEmulator(
-        double base_temp = 20.0,
-        double amplitude = 5.0,
-        double noise_level = 0.5);
 
 private:
     // Основная температура
