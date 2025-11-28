@@ -88,7 +88,7 @@ void TemperatureMonitor::comPortReadingThread()
                 std::string new_data(read_buffer, bytes_read);
                 buffer += new_data;
 
-                std::cout << "Received " << bytes_read << " bytes: [" << new_data << "]" << std::endl;
+                // std::cout << "Received " << bytes_read << " bytes: [" << new_data << "]" << std::endl;
 
                 // Обрабатываем полные строки
                 size_t pos;
