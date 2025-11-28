@@ -7,6 +7,9 @@ target_include_directories(time_manager PUBLIC time_manager)
 add_library(common STATIC common/common.cpp common/common.h)
 target_include_directories(common PUBLIC common)
 
+add_library(my_serial STATIC my_serial/my_serial.cpp my_serial/my_serial.hpp)
+target_include_directories(my_serial PUBLIC my_serial)
+
 add_library(temperature_monitor STATIC temperature_monitor/temperature_monitor.cpp temperature_monitor/temperature_monitor.h)
 target_include_directories(temperature_monitor PUBLIC temperature_monitor)
 
@@ -16,8 +19,10 @@ target_include_directories(temperature_emulation PUBLIC temperature_emulation)
 target_link_libraries(common PUBLIC time_manager)
 target_link_libraries(time_manager PUBLIC common)
 target_link_libraries(temperature_monitor PUBLIC common)
+target_link_libraries(temperature_monitor PUBLIC my_serial)
 target_link_libraries(temperature_monitor PUBLIC time_manager)
 target_link_libraries(temperature_emulation PUBLIC common)
+target_link_libraries(temperature_emulation PUBLIC my_serial)
 
 add_executable(LAB test/test.cpp)
 target_link_libraries(LAB common)

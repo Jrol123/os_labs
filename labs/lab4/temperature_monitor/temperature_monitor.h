@@ -2,11 +2,13 @@
 #define TEMPERATURE_MONITOR_H
 
 #include "common.h"
+#include "my_serial.hpp"
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <vector>
 #include <deque>
+#include <atomic>
 
 // Монитор температуры
 class TemperatureMonitor
@@ -18,6 +20,7 @@ public:
         std::string log_directory = "logs";
         std::chrono::milliseconds measurement_interval = std::chrono::hours(1);
         bool console_output = true;
+        std::string com_port = "COM2";
 
         // Конструктор по умолчанию
         Config() = default;
@@ -25,8 +28,9 @@ public:
         // Конструктор с параметрами
         Config(const std::string &dir,
                std::chrono::seconds interval = std::chrono::hours(1),
-               bool console = true)
-            : log_directory(dir), measurement_interval(interval), console_output(console) {}
+               bool console = true,
+               const std::string &com_port = "COM2")
+            : log_directory(dir), measurement_interval(interval), console_output(console), com_port(com_port) {}
     };
 
     // Получить экземпляр монитора (синглтон)
@@ -50,6 +54,9 @@ public:
     // Остановка монитора
     void shutdown();
 
+    bool startReadingFromCOMPort();
+    void stopReadingFromCOMPort();
+
 private:
     TemperatureMonitor() = default;
     ~TemperatureMonitor();
@@ -57,6 +64,8 @@ private:
     // Запрет копирования
     TemperatureMonitor(const TemperatureMonitor &) = delete;
     TemperatureMonitor &operator=(const TemperatureMonitor &) = delete;
+
+    void comPortReadingThread();
 
     // Ротация логов
     void rotateRawLogs();
@@ -98,6 +107,10 @@ private:
 
     std::mutex log_mutex_;
     bool initialized_ = false;
+
+    std::unique_ptr<cplib::SerialPort> serial_port_;
+    std::atomic<bool> com_reading_active_{false};
+    std::thread com_reading_thread_;
 
     // Буферы для вычисления средних
     struct TemperatureReading

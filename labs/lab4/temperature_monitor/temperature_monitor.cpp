@@ -2,10 +2,147 @@
 #include "time_manager.h"
 #include "common.h"
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <numeric>
 #include <thread>
+
+bool TemperatureMonitor::startReadingFromCOMPort()
+{
+    if (!initialized_)
+    {
+        std::cerr << "Monitor not initialized" << std::endl;
+        return false;
+    }
+
+    try
+    {
+        serial_port_ = std::make_unique<cplib::SerialPort>();
+        cplib::SerialPort::Parameters params(cplib::SerialPort::BAUDRATE_115200);
+        params.timeout = 0.0; // Неблокирующий режим
+        params.parity = cplib::SerialPort::COM_PARITY_NONE;
+        params.data_bits = 8;
+        params.stop_bits = cplib::SerialPort::STOPBIT_ONE;
+        params.controls = cplib::SerialPort::CONTROL_NONE;
+
+        std::cout << "Trying to open COM port for reading: " << config_.com_port << std::endl;
+        int result = serial_port_->Open(config_.com_port, params);
+        if (result != cplib::SerialPort::RE_OK)
+        {
+            std::cerr << "Failed to open COM port " << config_.com_port << ", error: " << result << std::endl;
+            return false;
+        }
+
+        // Устанавливаем неблокирующий режим
+        serial_port_->SetTimeout(0.0);
+
+        com_reading_active_ = true;
+        com_reading_thread_ = std::thread(&TemperatureMonitor::comPortReadingThread, this);
+
+        std::cout << "Started reading from COM port: " << config_.com_port << std::endl;
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Exception starting COM port reading: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+void TemperatureMonitor::stopReadingFromCOMPort()
+{
+    com_reading_active_ = false;
+    if (com_reading_thread_.joinable())
+    {
+        com_reading_thread_.join();
+    }
+
+    if (serial_port_ && serial_port_->IsOpen())
+    {
+        serial_port_->Close();
+    }
+}
+
+void TemperatureMonitor::comPortReadingThread()
+{
+    std::string buffer;
+    int read_count = 0;
+    int empty_reads = 0;
+
+    std::cout << "COM port reading thread started" << std::endl;
+
+    while (com_reading_active_)
+    {
+        try
+        {
+            char read_buffer[256];
+            size_t bytes_read = 0;
+
+            int result = serial_port_->Read(read_buffer, sizeof(read_buffer) - 1, &bytes_read);
+
+            if (result == cplib::SerialPort::RE_OK && bytes_read > 0)
+            {
+                empty_reads = 0; // Сброс счетчика пустых чтений
+                read_buffer[bytes_read] = '\0';
+                std::string new_data(read_buffer, bytes_read);
+                buffer += new_data;
+
+                std::cout << "Received " << bytes_read << " bytes: [" << new_data << "]" << std::endl;
+
+                // Обрабатываем полные строки
+                size_t pos;
+                while ((pos = buffer.find('\n')) != std::string::npos)
+                {
+                    std::string line = buffer.substr(0, pos);
+                    buffer.erase(0, pos + 1);
+
+                    // Убираем лишние символы (CR, пробелы)
+                    while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t'))
+                    {
+                        line.pop_back();
+                    }
+
+                    // Парсим температуру из строки формата "TEMP:25.5"
+                    if (line.find("TEMP:") == 0)
+                    {
+                        try
+                        {
+                            double temperature = std::stod(line.substr(5));
+                            // std::cout << "=== PARSED TEMPERATURE: " << temperature << "°C ===" << std::endl;
+                            logTemperature(temperature);
+                            read_count++;
+                        }
+                        catch (const std::exception &e)
+                        {
+                            std::cerr << "Failed to parse temperature from: [" << line << "]" << std::endl;
+                        }
+                    }
+                    else if (!line.empty())
+                    {
+                        std::cout << "Unknown message format: [" << line << "]" << std::endl;
+                    }
+                }
+            }
+            else
+            {
+                empty_reads++;
+                if (empty_reads % 100 == 0)
+                { // Сообщаем каждые 100 пустых чтений
+                    std::cout << "Still waiting for data... (" << empty_reads << " empty reads)" << std::endl;
+                }
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Exception in COM reading thread: " << e.what() << std::endl;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    std::cout << "COM port reading thread stopped. Total messages processed: " << read_count << std::endl;
+}
 
 std::chrono::milliseconds TemperatureMonitor::getHourDuration() const
 {
@@ -456,5 +593,6 @@ void TemperatureMonitor::shutdown()
 
 TemperatureMonitor::~TemperatureMonitor()
 {
+    stopReadingFromCOMPort();
     shutdown();
 }

@@ -2,6 +2,7 @@
 #define TEMPERATURE_EMULATION_H
 
 #include "common.h"
+#include "my_serial.hpp"
 #include <functional>
 #include <random>
 #include <memory>
@@ -15,7 +16,7 @@ public:
                         double amplitude = 5.0,
                         double noise_level = 0.5);
 
-    // Получиить текущую температуру
+    // Получить текущую температуру
     double getCurrentTemperature();
     // Установить начальную температуру
     void setBaseTemperature(double temp);
@@ -27,6 +28,13 @@ public:
     void enableDailyCycle(bool enable);
     // Установить кастомный генератор температуры
     void setCustomGenerator(std::function<double()> generator);
+
+    // Инициализировать COM порт
+    bool initializeCOMPort(const std::string& port_name = "COM1");
+    // Отправить температуру в порт
+    void sendTemperatureToPort(double temperature);
+    // 
+    void closeCOMPort();
 
 private:
     // Основная температура
@@ -45,6 +53,11 @@ private:
     std::normal_distribution<double> noise_distribution_;
     // Собственный генератор случайных значений
     std::function<double()> custom_generator_;
+
+    // COM-порт для передачи данных
+    std::unique_ptr<cplib::SerialPort> serial_port_;
+    // Статус COM-порта
+    bool com_initialized_ = false;
 
     // Цикл генерации температуры в течении дня
     double generateDailyCycle();
