@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 4.1)
 project(TemperatureMonitor)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_library(time_manager STATIC time_manager/time_manager.cpp time_manager/time_manager.h)
 target_include_directories(time_manager PUBLIC time_manager)
 

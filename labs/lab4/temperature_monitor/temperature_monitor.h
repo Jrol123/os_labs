@@ -9,6 +9,7 @@
 #include <vector>
 #include <deque>
 #include <atomic>
+#include <thread>
 
 // Монитор температуры
 class TemperatureMonitor
