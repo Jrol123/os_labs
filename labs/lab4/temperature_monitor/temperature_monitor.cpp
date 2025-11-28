@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <numeric>
 #include <thread>
+#include <memory>
 
 bool TemperatureMonitor::startReadingFromCOMPort()
 {
