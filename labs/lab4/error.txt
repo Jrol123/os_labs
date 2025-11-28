@@ -1,0 +1,21 @@
+In file included from /home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.cpp:1:
+/home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.h:113:10: error: ‘thread’ in namespace ‘std’ does not name a type
+  113 |     std::thread com_reading_thread_;
+      |          ^~~~~~
+/home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.h:12:1: note: ‘std::thread’ is defined in header ‘<thread>’; this is probably fixable by adding ‘#include <thread>’
+   11 | #include <atomic>
+  +++ |+#include <thread>
+   12 | 
+/home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.cpp: In member function ‘bool TemperatureMonitor::startReadingFromCOMPort()’:
+/home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.cpp:41:9: error: ‘com_reading_thread_’ was not declared in this scope; did you mean ‘com_reading_active_’?
+   41 |         com_reading_thread_ = std::thread(&TemperatureMonitor::comPortReadingThread, this);
+      |         ^~~~~~~~~~~~~~~~~~~
+      |         com_reading_active_
+/home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.cpp: In member function ‘void TemperatureMonitor::stopReadingFromCOMPort()’:
+/home/admin228/os_labs/labs/lab4/temperature_monitor/temperature_monitor.cpp:56:9: error: ‘com_reading_thread_’ was not declared in this scope; did you mean ‘com_reading_active_’?
+   56 |     if (com_reading_thread_.joinable())
+      |         ^~~~~~~~~~~~~~~~~~~
+      |         com_reading_active_
+make[2]: *** [CMakeFiles/temperature_monitor.dir/build.make:79: CMakeFiles/temperature_monitor.dir/temperature_monitor/temperature_monitor.cpp.o] Ошибка 1
+make[1]: *** [CMakeFiles/Makefile2:199: CMakeFiles/temperature_monitor.dir/all] Ошибка 2
+make: *** [Makefile:91: all] Ошибка 2
