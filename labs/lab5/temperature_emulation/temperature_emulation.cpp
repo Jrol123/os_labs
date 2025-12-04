@@ -1,17 +1,33 @@
 #include "temperature_emulation.h"
 #include <cmath>
 #include <chrono>
+#include <sstream>
 
 TemperatureEmulator::TemperatureEmulator(double base_temp,
                                          double amplitude,
                                          double noise_level)
     : base_temperature_(base_temp),
-    amplitude_(amplitude),
-    noise_level_(noise_level),
-    daily_cycle_enabled_(true),
-    random_engine_(std::random_device{}()),
-    noise_distribution_(0.0, noise_level)
+      amplitude_(amplitude),
+      noise_level_(noise_level),
+      daily_cycle_enabled_(true),
+      random_engine_(std::random_device{}()),
+      noise_distribution_(0.0, noise_level)
 {
+}
+
+std::string TemperatureEmulator::getTemperatureAsString()
+{
+    double temp = getCurrentTemperature();
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::stringstream ss;
+    ss << "temperature=" << temp
+       << "&timestamp=" << time_t
+       << "&base=" << base_temperature_
+       << "&amplitude=" << amplitude_;
+
+    return ss.str();
 }
 
 double TemperatureEmulator::getCurrentTemperature()

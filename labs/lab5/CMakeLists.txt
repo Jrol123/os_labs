@@ -35,6 +35,15 @@ target_include_directories(temperature_emulation PUBLIC temperature_emulation)
 add_library(http_server STATIC http_server/http_server.cpp http_server/http_server.h)
 target_include_directories(http_server PUBLIC http_server)
 
+add_library(network_publisher STATIC network_publisher/network_publisher.cpp network_publisher/network_publisher.h)
+target_include_directories(network_publisher PUBLIC network_publisher)
+add_library(network_collector STATIC network_collector/network_collector.cpp network_collector/network_collector.h)
+target_include_directories(network_collector PUBLIC network_collector)
+
+target_link_libraries(network_publisher PUBLIC common)
+target_link_libraries(network_collector PUBLIC common)
+
+
 target_link_libraries(common PUBLIC time_manager)
 target_link_libraries(database PUBLIC common)
 target_link_libraries(database PUBLIC sqlite3)
@@ -57,6 +66,8 @@ target_link_libraries(LAB temperature_monitor)
 target_link_libraries(LAB temperature_emulation)
 target_link_libraries(LAB time_manager)
 target_link_libraries(LAB http_server)
+target_link_libraries(LAB network_publisher)
+target_link_libraries(LAB network_collector)
 
 
 if(WIN32)

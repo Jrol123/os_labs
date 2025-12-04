@@ -17,6 +17,8 @@ public:
 
     // Получиить текущую температуру
     double getCurrentTemperature();
+    // Получить текущую температуру в формате для передачи
+    std::string getTemperatureAsString();
     // Установить начальную температуру
     void setBaseTemperature(double temp);
     // Установить колебания температуры (+- eps)
